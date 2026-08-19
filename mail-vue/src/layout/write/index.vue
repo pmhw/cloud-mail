@@ -15,92 +15,92 @@
         </div>
       </div>
       <div class="container">
-        <el-input-tag  @add-tag="(val) => addTagChange(val, 'receiveEmail')" tag-type="primary" @input="(val) => inputChange(val, 'receiveEmail')" size="default" v-model="form.receiveEmail" >
-          <template #prefix>
-            <div class="item-title" >{{ $t('recipient') }}</div>
-            <el-select
-                ref="mySelect"
-                class="write-select"
-                popper-class="write-select"
-                :show-arrow="false"
-                :no-match-text="' '"
-                :no-data-text="' '"
-                @visible-change="selectStatusChange"
-                @change="(val) => selectChange(val, 'receiveEmail')"
-            >
-              <el-option
-                  v-for="item in selectRecipientList"
-                  :key="item"
-                  :label="item"
-                  :value="item"
-                  style="color: #999896;"
-              />
-            </el-select>
-          </template>
-          <template #suffix>
-            <div style="display: flex;margin-right: 3px; gap: 8px; align-items: center;">
-              <span class="cc-toggle" v-if="!showCc" @click.stop="showCc = true">{{ $t('cc') }}</span>
-              <span class="cc-toggle" v-if="!showBcc" @click.stop="showBcc = true">{{ $t('bcc') }}</span>
-              <Icon icon="fa7-solid:user-plus" width="20" height="20" class="add-contact" @click.stop="openContacts('receiveEmail')" />
-            </div>
-          </template>
-        </el-input-tag>
-        <el-input-tag v-if="showCc" @add-tag="(val) => addTagChange(val, 'cc')" tag-type="primary" @input="(val) => inputChange(val, 'cc')" size="default" v-model="form.cc" >
-          <template #prefix>
-            <div class="item-title" >{{ $t('cc') }}</div>
-            <el-select
-                ref="ccSelect"
-                class="write-select"
-                popper-class="write-select"
-                :show-arrow="false"
-                :no-match-text="' '"
-                :no-data-text="' '"
-                @visible-change="ccSelectStatusChange"
-                @change="(val) => selectChange(val, 'cc')"
-            >
-              <el-option
-                  v-for="item in selectCcList"
-                  :key="item"
-                  :label="item"
-                  :value="item"
-                  style="color: #999896;"
-              />
-            </el-select>
-          </template>
-          <template #suffix>
-            <div style="display: flex;margin-right: 3px;">
-              <Icon icon="fa7-solid:user-plus" width="20" height="20" class="add-contact" @click.stop="openContacts('cc')" />
-            </div>
-          </template>
-        </el-input-tag>
-        <el-input-tag v-if="showBcc" @add-tag="(val) => addTagChange(val, 'bcc')" tag-type="primary" @input="(val) => inputChange(val, 'bcc')" size="default" v-model="form.bcc" >
-          <template #prefix>
-            <div class="item-title" >{{ $t('bcc') }}</div>
-            <el-select
-                ref="bccSelect"
-                class="write-select"
-                popper-class="write-select"
-                :show-arrow="false"
-                :no-match-text="' '"
-                :no-data-text="' '"
-                @visible-change="bccSelectStatusChange"
-                @change="(val) => selectChange(val, 'bcc')"
-            >
-              <el-option
-                  v-for="item in selectBccList"
-                  :key="item"
-                  :label="item"
-                  :value="item"
-                  style="color: #999896;"
-              />
-            </el-select>
-          </template>
-          <template #suffix>
-            <div style="display: flex;margin-right: 3px;">
-              <Icon icon="fa7-solid:user-plus" width="20" height="20" class="add-contact" @click.stop="openContacts('bcc')" />
-            </div>
-          </template>
-        </el-input-tag>
+        <div class="addr-row">
+          <el-input-tag class="addr-input" @add-tag="(val) => addTagChange(val, 'receiveEmail')" tag-type="primary" @input="(val) => inputChange(val, 'receiveEmail')" size="default" v-model="form.receiveEmail" >
+            <template #prefix>
+              <div class="item-title" >{{ $t('recipient') }}</div>
+              <el-select
+                  ref="mySelect"
+                  class="write-select"
+                  popper-class="write-select"
+                  :show-arrow="false"
+                  :no-match-text="' '"
+                  :no-data-text="' '"
+                  @visible-change="selectStatusChange"
+                  @change="(val) => selectChange(val, 'receiveEmail')"
+              >
+                <el-option
+                    v-for="item in selectRecipientList"
+                    :key="item"
+                    :label="item"
+                    :value="item"
+                    style="color: #999896;"
+                />
+              </el-select>
+            </template>
+          </el-input-tag>
+          <div class="addr-actions">
+            <span class="cc-toggle" v-if="!showCc" @click.stop="showCc = true">{{ $t('cc') }}</span>
+            <span class="cc-toggle" v-if="!showBcc" @click.stop="showBcc = true">{{ $t('bcc') }}</span>
+            <Icon icon="fa7-solid:user-plus" width="20" height="20" class="add-contact" @click.stop="openContacts('receiveEmail')" />
+          </div>
+        </div>
+        <div class="addr-row" v-if="showCc">
+          <el-input-tag class="addr-input" @add-tag="(val) => addTagChange(val, 'cc')" tag-type="primary" @input="(val) => inputChange(val, 'cc')" size="default" v-model="form.cc" >
+            <template #prefix>
+              <div class="item-title" >{{ $t('cc') }}</div>
+              <el-select
+                  ref="ccSelect"
+                  class="write-select"
+                  popper-class="write-select"
+                  :show-arrow="false"
+                  :no-match-text="' '"
+                  :no-data-text="' '"
+                  @visible-change="ccSelectStatusChange"
+                  @change="(val) => selectChange(val, 'cc')"
+              >
+                <el-option
+                    v-for="item in selectCcList"
+                    :key="item"
+                    :label="item"
+                    :value="item"
+                    style="color: #999896;"
+                />
+              </el-select>
+            </template>
+          </el-input-tag>
+          <div class="addr-actions">
+            <Icon icon="fa7-solid:user-plus" width="20" height="20" class="add-contact" @click.stop="openContacts('cc')" />
+          </div>
+        </div>
+        <div class="addr-row" v-if="showBcc">
+          <el-input-tag class="addr-input" @add-tag="(val) => addTagChange(val, 'bcc')" tag-type="primary" @input="(val) => inputChange(val, 'bcc')" size="default" v-model="form.bcc" >
+            <template #prefix>
+              <div class="item-title" >{{ $t('bcc') }}</div>
+              <el-select
+                  ref="bccSelect"
+                  class="write-select"
+                  popper-class="write-select"
+                  :show-arrow="false"
+                  :no-match-text="' '"
+                  :no-data-text="' '"
+                  @visible-change="bccSelectStatusChange"
+                  @change="(val) => selectChange(val, 'bcc')"
+              >
+                <el-option
+                    v-for="item in selectBccList"
+                    :key="item"
+                    :label="item"
+                    :value="item"
+                    style="color: #999896;"
+                />
+              </el-select>
+            </template>
+          </el-input-tag>
+          <div class="addr-actions">
+            <Icon icon="fa7-solid:user-plus" width="20" height="20" class="add-contact" @click.stop="openContacts('bcc')" />
+          </div>
+        </div>
         <el-input v-model="form.subject" :placeholder="t('subject')" />
         <tinyEditor :def-value="defValue" ref="editor" @change="change" @focus="focusChange" />
         <div class="button-item">
@@ -980,7 +980,30 @@ function close() {
 }
 
 .add-contact {
-  color: var(--regular-text-color)
+  color: var(--regular-text-color);
+  cursor: pointer;
+  flex-shrink: 0;
+  &:hover {
+    color: var(--el-color-primary);
+  }
+}
+
+.addr-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .addr-input {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .addr-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
 }
 
 .cc-toggle {
@@ -1000,10 +1023,6 @@ function close() {
   z-index: 0;
   opacity: 0;
   pointer-events: none;
-}
-
-:deep(.el-input-tag__suffix) {
-  padding-right: 4px;
 }
 
 .icon {

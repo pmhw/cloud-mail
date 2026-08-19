@@ -1,0 +1,12 @@
+# Git 提交说明
+
+当 Cursor 为仓库自动生成 Git commit message（Source Control 快捷提交 / 生成提交说明）时：
+
+- 必须使用简体中文撰写
+- 优先一行简明主题，约 50 字以内
+- 说明「为什么改」，不要逐行复述 diff
+- 可用前缀：`feat:` / `fix:` / `chore:` / `refactor:` / `docs:`，后接中文说明
+
+示例：
+- `feat: 撰写页抄送密送支持添加最近联系人`
+- `fix: 修复转发时附件未带上的问题`

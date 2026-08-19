@@ -41,7 +41,7 @@
             <div style="display: flex;margin-right: 3px; gap: 8px; align-items: center;">
               <span class="cc-toggle" v-if="!showCc" @click.stop="showCc = true">{{ $t('cc') }}</span>
               <span class="cc-toggle" v-if="!showBcc" @click.stop="showBcc = true">{{ $t('bcc') }}</span>
-              <Icon icon="fa7-solid:user-plus" width="20" height="20" class="add-contact" @click.stop="openContacts" />
+              <Icon icon="fa7-solid:user-plus" width="20" height="20" class="add-contact" @click.stop="openContacts('receiveEmail')" />
             </div>
           </template>
         </el-input-tag>
@@ -67,6 +67,11 @@
               />
             </el-select>
           </template>
+          <template #suffix>
+            <div style="display: flex;margin-right: 3px;">
+              <Icon icon="fa7-solid:user-plus" width="20" height="20" class="add-contact" @click.stop="openContacts('cc')" />
+            </div>
+          </template>
         </el-input-tag>
         <el-input-tag v-if="showBcc" @add-tag="(val) => addTagChange(val, 'bcc')" tag-type="primary" @input="(val) => inputChange(val, 'bcc')" size="default" v-model="form.bcc" >
           <template #prefix>
@@ -89,6 +94,11 @@
                   style="color: #999896;"
               />
             </el-select>
+          </template>
+          <template #suffix>
+            <div style="display: flex;margin-right: 3px;">
+              <Icon icon="fa7-solid:user-plus" width="20" height="20" class="add-contact" @click.stop="openContacts('bcc')" />
+            </div>
           </template>
         </el-input-tag>
         <el-input v-model="form.subject" :placeholder="t('subject')" />
@@ -194,6 +204,7 @@ let ccSelectStatus = false
 let bccSelectStatus = false
 const showCc = ref(false)
 const showBcc = ref(false)
+const contactsTarget = ref('receiveEmail')
 const backReply = reactive({
   receiveEmail: [],
   cc: [],
@@ -224,10 +235,12 @@ const selectBccList = ref([])
 
 const contacts = computed(() => writerStore.sendRecipientRecord.map(item => ({email: item})))
 
-function openContacts() {
+function openContacts(target = 'receiveEmail') {
+  contactsTarget.value = target
   showContacts.value = true
   nextTick(() => {
-    form.receiveEmail.forEach(item => {
+    const selected = form[target] || []
+    selected.forEach(item => {
       if (writerStore.sendRecipientRecord.includes(item)) {
         contactsTabRef.value.toggleRowSelection({email: item});
       }
@@ -242,21 +255,22 @@ function deleteContact() {
     type: 'warning'
   }).then(() => {
     const contactList = contactsTabRef.value.getSelectionRows().map(item => item.email);
-    form.receiveEmail = form.receiveEmail.filter(item => !contactList.includes(item));
+    const target = contactsTarget.value
+    form[target] = form[target].filter(item => !contactList.includes(item));
     writerStore.sendRecipientRecord = writerStore.sendRecipientRecord.filter(item => !contactList.includes(item));
   })
 }
 
 function chooseContact() {
-
+  const target = contactsTarget.value
   const contactList = contactsTabRef.value.getSelectionRows().map(item => item.email);
   contactList.forEach(item => {
-    if (!form.receiveEmail.includes(item)) {
-      form.receiveEmail.push(item);
+    if (!form[target].includes(item)) {
+      form[target].push(item);
     }
   })
 
-  form.receiveEmail = form.receiveEmail.filter(item => {
+  form[target] = form[target].filter(item => {
     return contactList.includes(item) || !writerStore.sendRecipientRecord.includes(item);
   });
 

@@ -30,6 +30,19 @@
         </div>
       </div>
     </div>
+    <div class="signature">
+      <div class="title">{{$t('emailSignature')}}</div>
+      <div class="signature-desc">{{$t('emailSignatureDesc')}}</div>
+      <el-input
+          v-model="signature"
+          type="textarea"
+          :rows="5"
+          :placeholder="$t('emailSignaturePlaceholder')"
+      />
+      <div>
+        <el-button type="primary" :loading="signatureLoading" @click="saveSignature">{{$t('save')}}</el-button>
+      </div>
+    </div>
     <div class="language">
       <div class="title">{{$t('language')}}</div>
       <el-select
@@ -61,11 +74,11 @@
   </div>
 </template>
 <script setup>
-import {reactive, ref, defineOptions} from 'vue'
+import {reactive, ref, defineOptions, watch} from 'vue'
 import {resetPassword, userDelete} from "@/request/my.js";
 import {useUserStore} from "@/store/user.js";
 import router from "@/router/index.js";
-import {accountSetName} from "@/request/account.js";
+import {accountSetName, accountSetSignature} from "@/request/account.js";
 import {useAccountStore} from "@/store/account.js";
 import {useI18n} from "vue-i18n";
 import {useSettingStore} from "@/store/setting.js";
@@ -78,10 +91,37 @@ const setPwdLoading = ref(false)
 const setNameShow = ref(false)
 const accountName = ref(null)
 const langSelect = ref(settingStore.lang)
+const signature = ref(accountStore.currentAccount?.signature || userStore.user?.account?.signature || '')
+const signatureLoading = ref(false)
 
 defineOptions({
   name: 'setting'
 })
+
+watch(() => accountStore.currentAccountId, () => {
+  signature.value = accountStore.currentAccount?.signature || ''
+})
+
+function saveSignature() {
+  const accountId = accountStore.currentAccount?.accountId || userStore.user?.account?.accountId
+  if (!accountId) return
+  signatureLoading.value = true
+  accountSetSignature(accountId, signature.value || '').then(() => {
+    if (accountStore.currentAccount) {
+      accountStore.currentAccount.signature = signature.value || ''
+    }
+    if (userStore.user?.account?.accountId === accountId) {
+      userStore.user.account.signature = signature.value || ''
+    }
+    ElMessage({
+      message: t('saveSuccessMsg'),
+      type: 'success',
+      plain: true,
+    })
+  }).finally(() => {
+    signatureLoading.value = false
+  })
+}
 
 function showSetName() {
   accountName.value = userStore.user.name
@@ -285,6 +325,22 @@ function submitPwd() {
 
     .language-select {
       width: 100px;
+    }
+  }
+
+  .signature {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 40px;
+    font-size: 14px;
+
+    .signature-desc {
+      color: var(--regular-text-color);
+    }
+
+    .el-textarea {
+      max-width: 560px;
     }
   }
 

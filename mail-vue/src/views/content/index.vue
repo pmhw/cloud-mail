@@ -26,6 +26,8 @@
                 </div>
               </div>
               <div class="receive"><span class="source">{{$t('recipient')}}</span><span class="receive-email">{{  formateReceive(email.recipient) }}</span></div>
+              <div class="receive" v-if="hasAddressList(email.cc)"><span class="source">{{$t('cc')}}</span><span class="receive-email">{{ formateReceive(email.cc) }}</span></div>
+              <div class="receive" v-if="email.type === 1 && hasAddressList(email.bcc)"><span class="source">{{$t('bcc')}}</span><span class="receive-email">{{ formateReceive(email.bcc) }}</span></div>
               <div class="date">
                 <div>{{ formatDetailDate(email.createTime) }}</div>
               </div>
@@ -160,8 +162,18 @@ function isImage(filename) {
 }
 
 function formateReceive(recipient) {
-  recipient = JSON.parse(recipient)
-  return recipient.map(item => item.address).join(', ')
+  if (!recipient) return '';
+  try {
+    const list = typeof recipient === 'string' ? JSON.parse(recipient) : recipient;
+    if (!Array.isArray(list)) return '';
+    return list.map(item => item.address || item).filter(Boolean).join(', ')
+  } catch (e) {
+    return '';
+  }
+}
+
+function hasAddressList(list) {
+  return !!formateReceive(list)
 }
 
 function changeStar() {

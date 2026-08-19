@@ -233,7 +233,7 @@ function switchDark(nextIsDark, root) {
 }
 
 function openSend() {
-  uiStore.writerRef.open()
+  uiStore.writerRef.openNew()
 }
 
 function changeAside() {

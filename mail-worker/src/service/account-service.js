@@ -223,6 +223,15 @@ const accountService = {
 		await orm(c).update(account).set({name}).where(and(eq(account.userId, userId),eq(account.accountId, accountId))).run();
 	},
 
+	async setSignature(c, params, userId) {
+		const { signature = '', accountId } = params;
+		if (String(signature).length > 10000) {
+			throw new BizError(t('signatureLengthLimit'));
+		}
+		await orm(c).update(account).set({ signature: String(signature) })
+			.where(and(eq(account.userId, userId), eq(account.accountId, accountId))).run();
+	},
+
 	async allAccount(c, params) {
 
 		let { userId, num, size } = params

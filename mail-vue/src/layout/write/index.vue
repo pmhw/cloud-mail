@@ -15,7 +15,7 @@
         </div>
       </div>
       <div class="container">
-        <el-input-tag  @add-tag="addTagChange" tag-type="primary" @input="inputChange" size="default" v-model="form.receiveEmail" >
+        <el-input-tag  @add-tag="(val) => addTagChange(val, 'receiveEmail')" tag-type="primary" @input="(val) => inputChange(val, 'receiveEmail')" size="default" v-model="form.receiveEmail" >
           <template #prefix>
             <div class="item-title" >{{ $t('recipient') }}</div>
             <el-select
@@ -26,7 +26,7 @@
                 :no-match-text="' '"
                 :no-data-text="' '"
                 @visible-change="selectStatusChange"
-                @change="selectChange"
+                @change="(val) => selectChange(val, 'receiveEmail')"
             >
               <el-option
                   v-for="item in selectRecipientList"
@@ -38,9 +38,57 @@
             </el-select>
           </template>
           <template #suffix>
-            <div style="display: flex;margin-right: 3px;">
+            <div style="display: flex;margin-right: 3px; gap: 8px; align-items: center;">
+              <span class="cc-toggle" v-if="!showCc" @click.stop="showCc = true">{{ $t('cc') }}</span>
+              <span class="cc-toggle" v-if="!showBcc" @click.stop="showBcc = true">{{ $t('bcc') }}</span>
               <Icon icon="fa7-solid:user-plus" width="20" height="20" class="add-contact" @click.stop="openContacts" />
             </div>
+          </template>
+        </el-input-tag>
+        <el-input-tag v-if="showCc" @add-tag="(val) => addTagChange(val, 'cc')" tag-type="primary" @input="(val) => inputChange(val, 'cc')" size="default" v-model="form.cc" >
+          <template #prefix>
+            <div class="item-title" >{{ $t('cc') }}</div>
+            <el-select
+                ref="ccSelect"
+                class="write-select"
+                popper-class="write-select"
+                :show-arrow="false"
+                :no-match-text="' '"
+                :no-data-text="' '"
+                @visible-change="ccSelectStatusChange"
+                @change="(val) => selectChange(val, 'cc')"
+            >
+              <el-option
+                  v-for="item in selectCcList"
+                  :key="item"
+                  :label="item"
+                  :value="item"
+                  style="color: #999896;"
+              />
+            </el-select>
+          </template>
+        </el-input-tag>
+        <el-input-tag v-if="showBcc" @add-tag="(val) => addTagChange(val, 'bcc')" tag-type="primary" @input="(val) => inputChange(val, 'bcc')" size="default" v-model="form.bcc" >
+          <template #prefix>
+            <div class="item-title" >{{ $t('bcc') }}</div>
+            <el-select
+                ref="bccSelect"
+                class="write-select"
+                popper-class="write-select"
+                :show-arrow="false"
+                :no-match-text="' '"
+                :no-data-text="' '"
+                @visible-change="bccSelectStatusChange"
+                @change="(val) => selectChange(val, 'bcc')"
+            >
+              <el-option
+                  v-for="item in selectBccList"
+                  :key="item"
+                  :label="item"
+                  :value="item"
+                  style="color: #999896;"
+              />
+            </el-select>
           </template>
         </el-input-tag>
         <el-input v-model="form.subject" :placeholder="t('subject')" />
@@ -104,7 +152,7 @@ import {useEmailStore} from "@/store/email.js";
 import {fileToBase64, formatBytes} from "@/utils/file-utils.js";
 import {getIconByName} from "@/utils/icon-utils.js";
 import sendPercent from "@/components/send-percent/index.vue"
-import {toOssDomain} from "@/utils/convert.js";
+import {toOssDomain, cvtR2Url} from "@/utils/convert.js";
 import {formatDetailDate} from "@/utils/day.js";
 import {useSettingStore} from "@/store/setting.js";
 import {userDraftStore} from "@/store/draft.js";
@@ -117,6 +165,7 @@ import {ElMessageBox} from "element-plus";
 
 defineExpose({
   open,
+  openNew,
   openReply,
   openForward,
   openDraft
@@ -138,9 +187,17 @@ const defValue = ref('')
 const contactsTabRef = ref({})
 const showContacts = ref(false)
 const mySelect = ref()
+const ccSelect = ref()
+const bccSelect = ref()
 let selectStatus = false
+let ccSelectStatus = false
+let bccSelectStatus = false
+const showCc = ref(false)
+const showBcc = ref(false)
 const backReply = reactive({
   receiveEmail: [],
+  cc: [],
+  bcc: [],
   subject: '',
   content: '',
   sendType: ''
@@ -148,6 +205,8 @@ const backReply = reactive({
 const form = reactive({
   sendEmail: '',
   receiveEmail: [],
+  cc: [],
+  bcc: [],
   accountId: -1,
   name: '',
   subject: '',
@@ -160,6 +219,8 @@ const form = reactive({
 })
 
 const selectRecipientList = ref([])
+const selectCcList = ref([])
+const selectBccList = ref([])
 
 const contacts = computed(() => writerStore.sendRecipientRecord.map(item => ({email: item})))
 
@@ -206,48 +267,68 @@ function clearSelectContact() {
   contactsTabRef.value.clearSelection();
 }
 
-function selectChange(value) {
-  form.receiveEmail.push(value)
+function selectChange(value, field = 'receiveEmail') {
+  form[field].push(value)
 }
 
 function selectStatusChange(status) {
   selectStatus = status
 }
 
-const openSelect = () => {
-  mySelect.value.toggleMenu()
+function ccSelectStatusChange(status) {
+  ccSelectStatus = status
 }
 
-function inputChange(value) {
-
-  selectRecipientList.value = writerStore.sendRecipientRecord.filter(item => value && !form.receiveEmail.includes(item) && item.startsWith(value)).slice(0, 10);
-
-  if (!selectStatus && selectRecipientList.value.length > 0) {
-    openSelect()
-  }
-
-  if (selectStatus && selectRecipientList.value.length === 0) {
-    openSelect()
-  }
-
+function bccSelectStatusChange(status) {
+  bccSelectStatus = status
 }
 
-function addTagChange(val) {
+const openSelect = (field = 'receiveEmail') => {
+  if (field === 'cc') {
+    ccSelect.value?.toggleMenu()
+  } else if (field === 'bcc') {
+    bccSelect.value?.toggleMenu()
+  } else {
+    mySelect.value?.toggleMenu()
+  }
+}
+
+function inputChange(value, field = 'receiveEmail') {
+  const list = writerStore.sendRecipientRecord.filter(item => value && !form[field].includes(item) && item.startsWith(value)).slice(0, 10);
+
+  if (field === 'cc') {
+    selectCcList.value = list
+    if (!ccSelectStatus && list.length > 0) openSelect('cc')
+    if (ccSelectStatus && list.length === 0) openSelect('cc')
+  } else if (field === 'bcc') {
+    selectBccList.value = list
+    if (!bccSelectStatus && list.length > 0) openSelect('bcc')
+    if (bccSelectStatus && list.length === 0) openSelect('bcc')
+  } else {
+    selectRecipientList.value = list
+    if (!selectStatus && list.length > 0) openSelect('receiveEmail')
+    if (selectStatus && list.length === 0) openSelect('receiveEmail')
+  }
+}
+
+function addTagChange(val, field = 'receiveEmail') {
 
   const emails = Array.from(new Set(
       val.split(/[,，]/).map(item => item.trim()).filter(item => item)
   ));
 
-  form.receiveEmail.splice(form.receiveEmail.length - 1, 1)
+  form[field].splice(form[field].length - 1, 1)
 
   let has = false
   emails.forEach(email => {
-    if (isEmail(email) && !form.receiveEmail.includes(email)) {
-      form.receiveEmail.push(email)
+    if (isEmail(email) && !form[field].includes(email)) {
+      form[field].push(email)
       has = true
     }
   })
-  if (selectStatus && has) openSelect()
+  if (field === 'receiveEmail' && selectStatus && has) openSelect('receiveEmail')
+  if (field === 'cc' && ccSelectStatus && has) openSelect('cc')
+  if (field === 'bcc' && bccSelectStatus && has) openSelect('bcc')
 }
 
 function clearContent() {
@@ -374,6 +455,8 @@ async function sendEmail() {
       form.subject = ''
       form.content = ''
       form.receiveEmail = []
+      form.cc = []
+      form.bcc = []
       draftStore.setDraft = {...toRaw(form)}
     }
 
@@ -400,16 +483,19 @@ async function sendEmail() {
 }
 
 function addRecipientRecord() {
+  const allEmails = [...form.receiveEmail, ...form.cc, ...form.bcc];
   writerStore.sendRecipientRecord = writerStore.sendRecipientRecord.filter(
-      email => !form.receiveEmail.includes(email)
+      email => !allEmails.includes(email)
   );
 
-  writerStore.sendRecipientRecord.unshift(...form.receiveEmail);
+  writerStore.sendRecipientRecord.unshift(...allEmails);
   writerStore.sendRecipientRecord = writerStore.sendRecipientRecord.slice(0, 500);
 }
 
 function resetForm() {
   form.receiveEmail = []
+  form.cc = []
+  form.bcc = []
   form.subject = ''
   form.content = ''
   form.manyType = null
@@ -417,9 +503,13 @@ function resetForm() {
   form.sendType = ''
   form.emailId = 0
   form.draftId = null
+  showCc.value = false
+  showBcc.value = false
   backReply.content = ''
   backReply.subject = ''
   backReply.receiveEmail = []
+  backReply.cc = []
+  backReply.bcc = []
   backReply.sendType = ''
   editor.value.clearEditor()
 }
@@ -430,7 +520,48 @@ function change(content, text) {
 }
 
 function focusChange() {
-  if (selectStatus) openSelect()
+  if (selectStatus) openSelect('receiveEmail')
+  if (ccSelectStatus) openSelect('cc')
+  if (bccSelectStatus) openSelect('bcc')
+}
+
+function getSignatureHtml() {
+  const signature = accountStore.currentAccount?.signature || userStore.user?.account?.signature || '';
+  if (!signature) return '';
+  const html = signature.includes('<') ? signature : signature.replace(/\n/g, '<br>');
+  return `<div><br></div><div class="mail-signature">${html}</div>`;
+}
+
+function formatAddressList(list) {
+  if (!list) return '';
+  try {
+    const arr = typeof list === 'string' ? JSON.parse(list) : list;
+    if (!Array.isArray(arr)) return '';
+    return arr.map(item => item.address || item).filter(Boolean).join(', ');
+  } catch (e) {
+    return '';
+  }
+}
+
+async function loadForwardAttachments(email) {
+  const attList = email.attList || [];
+  for (const att of attList) {
+    try {
+      const url = cvtR2Url(att.key);
+      const res = await fetch(url);
+      if (!res.ok) continue;
+      const blob = await res.blob();
+      const content = await fileToBase64(blob);
+      form.attachments.push({
+        content,
+        filename: att.filename,
+        size: att.size || blob.size,
+        contentType: att.mimeType || blob.type || 'application/octet-stream'
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  }
 }
 
 function openForward(email) {
@@ -438,21 +569,48 @@ function openForward(email) {
 
   email.subject = email.subject || ''
 
-  form.subject = email.subject
+  const isFw = (
+      email.subject.startsWith('Fw:') ||
+      email.subject.startsWith('Fw：') ||
+      email.subject.startsWith('Fwd:') ||
+      email.subject.startsWith('Fwd：') ||
+      email.subject.startsWith('转发：') ||
+      email.subject.startsWith('转发:')
+  )
+  form.subject = isFw ? email.subject : 'Fw: ' + email.subject
   form.sendType = 'forward'
 
   defValue.value = ''
 
-  setTimeout(() => {
+  setTimeout(async () => {
+    const fromLine = `${email.name || ''} &lt;${email.sendEmail || ''}&gt;`
+    const toLine = formatAddressList(email.recipient) || email.toEmail || ''
+    const ccLine = formatAddressList(email.cc)
     defValue.value = `
-      ${formatImage(email.content) || `<pre style="font-family: inherit;word-break: break-word;white-space: pre-wrap;margin: 0">${email.text}</pre>`}
-    `
+    <div></div>
+    ${getSignatureHtml()}
+    <div>
+    <br>
+    ---------- ${t('forwardMail')} ----------<br>
+    ${t('from')}: ${fromLine}<br>
+    ${t('date')}: ${formatDetailDate(email.createTime)}<br>
+    ${t('subject')}: ${email.subject || ''}<br>
+    ${t('recipient')}: ${toLine}${ccLine ? `<br>${t('cc')}: ${ccLine}` : ''}
+    </div>
+    <blockquote class="mceNonEditable" style="margin: 0 0 0 0.8ex;border-left: 1px solid rgb(204,204,204);padding-left: 1ex;">
+      <article>
+          ${formatImage(email.content) || `<pre style="font-family: inherit;word-break: break-word;white-space: pre-wrap;margin: 0">${email.text || ''}</pre>`}
+      </article>
+    </blockquote>`
+    await loadForwardAttachments(email)
     open()
 
     nextTick(() => {
       backReply.content = editor.value.getContent()
       backReply.subject = form.subject
-      backReply.receiveEmail = form.receiveEmail
+      backReply.receiveEmail = [...form.receiveEmail]
+      backReply.cc = [...form.cc]
+      backReply.bcc = [...form.bcc]
       backReply.sendType = form.sendType
     })
 
@@ -479,6 +637,7 @@ function openReply(email) {
   setTimeout(() => {
     defValue.value = `
     <div></div>
+    ${getSignatureHtml()}
     <div>
     <br>
         ${formatDetailDate(email.createTime)} ${email.name} &lt${email.sendEmail}&gt ${t('wrote')}:
@@ -493,7 +652,9 @@ function openReply(email) {
     nextTick(() => {
       backReply.content = editor.value.getContent()
       backReply.subject = form.subject
-      backReply.receiveEmail = form.receiveEmail
+      backReply.receiveEmail = [...form.receiveEmail]
+      backReply.cc = [...form.cc]
+      backReply.bcc = [...form.bcc]
       backReply.sendType = form.sendType
     })
   })
@@ -522,10 +683,23 @@ function open() {
 
 function openDraft(draft) {
   Object.assign(form, {...draft})
+  form.cc = draft.cc || []
+  form.bcc = draft.bcc || []
+  showCc.value = (form.cc?.length || 0) > 0
+  showBcc.value = (form.bcc?.length || 0) > 0
   defValue.value = ''
   setTimeout(() => defValue.value = form.content)
   show.value = true;
   editor.value.focus()
+}
+
+function openNew() {
+  resetForm();
+  defValue.value = ''
+  setTimeout(() => {
+    defValue.value = getSignatureHtml()
+    open()
+  })
 }
 
 const handleKeyDown = (event) => {
@@ -544,7 +718,9 @@ onUnmounted(() => {
 
 function close() {
 
-  if (selectStatus) openSelect();
+  if (selectStatus) openSelect('receiveEmail');
+  if (ccSelectStatus) openSelect('cc');
+  if (bccSelectStatus) openSelect('bcc');
 
   if (!form.content) {
     form.content = editor.value.getContent();
@@ -557,7 +733,20 @@ function close() {
     return;
   }
 
-  if (!(form.content || form.subject || form.receiveEmail.length > 0)) {
+  if (!(form.content || form.subject || form.receiveEmail.length > 0 || form.cc.length > 0 || form.bcc.length > 0)) {
+    show.value = false
+    resetForm()
+    return;
+  }
+
+  const signatureHtml = getSignatureHtml()
+  const currentContent = form.content || editor.value.getContent() || ''
+  const isOnlySignature = !form.subject
+      && form.receiveEmail.length === 0
+      && form.cc.length === 0
+      && form.bcc.length === 0
+      && (!currentContent.trim() || currentContent === signatureHtml)
+  if (isOnlySignature) {
     show.value = false
     resetForm()
     return;
@@ -566,11 +755,16 @@ function close() {
   if (backReply.sendType === 'reply' || backReply.sendType === 'forward') {
     let subjectFlag = form.subject === backReply.subject
     let contentFlag = editor.value.getContent() === backReply.content
-    let receiveFlag = form.receiveEmail.length === 1 && form.receiveEmail[0] === backReply.receiveEmail[0]
+    let receiveFlag = form.receiveEmail.length === backReply.receiveEmail.length
+        && form.receiveEmail.every((email, index) => email === backReply.receiveEmail[index])
+    let ccFlag = form.cc.length === backReply.cc.length
+        && form.cc.every((email, index) => email === backReply.cc[index])
+    let bccFlag = form.bcc.length === backReply.bcc.length
+        && form.bcc.every((email, index) => email === backReply.bcc[index])
     if (backReply.sendType === 'forward' && form.receiveEmail.length === 0) {
       receiveFlag = true;
     }
-    if (subjectFlag && contentFlag && receiveFlag) {
+    if (subjectFlag && contentFlag && receiveFlag && ccFlag && bccFlag) {
       resetForm();
       close()
       return;
@@ -690,11 +884,17 @@ function close() {
 
     .container {
       height: 100%;
-      display: grid;
-      grid-template-rows: auto auto 1fr auto;
+      display: flex;
+      flex-direction: column;
       gap: 15px;
 
+      :deep(.editor-box) {
+        flex: 1;
+        min-height: 0;
+      }
+
       .item-title {
+        min-width: 42px;
       }
 
       .button-item {
@@ -767,6 +967,16 @@ function close() {
 
 .add-contact {
   color: var(--regular-text-color)
+}
+
+.cc-toggle {
+  color: var(--regular-text-color);
+  cursor: pointer;
+  font-size: 13px;
+  white-space: nowrap;
+  &:hover {
+    color: var(--el-color-primary);
+  }
 }
 
 .write-select {

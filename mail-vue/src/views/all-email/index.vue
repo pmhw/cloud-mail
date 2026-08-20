@@ -1,4 +1,5 @@
 <template>
+  <EmailSplit>
   <div class="email-list-box">
     <emailScroll ref="sysEmailScroll"
                  :get-emailList="getEmailList"
@@ -85,12 +86,14 @@
       </div>
     </el-dialog>
   </div>
+  </EmailSplit>
 </template>
 
 <script setup>
 import {starAdd, starCancel} from "@/request/star.js";
 import emailScroll from "@/components/email-scroll/index.vue"
-import {computed, defineOptions, reactive, ref, watch, onMounted} from "vue";
+import EmailSplit from "@/components/email-split/index.vue"
+import {computed, defineOptions, reactive, ref, watch, onMounted, onUnmounted} from "vue";
 import {useEmailStore} from "@/store/email.js";
 import {
   allEmailList,
@@ -99,12 +102,12 @@ import {
   allEmailLatest
 } from "@/request/all-email.js";
 import {Icon} from "@iconify/vue";
-import router from "@/router/index.js";
 import {useI18n} from 'vue-i18n';
 import {toUtc} from "@/utils/day.js";
 import {sleep} from "@/utils/time-utils.js";
 import {useSettingStore} from "@/store/setting.js";
 import { useRoute } from 'vue-router'
+import { openEmailPreview, clearEmailPreview } from "@/utils/email-preview.js";
 
 defineOptions({
   name: 'all-email'
@@ -123,6 +126,10 @@ const clearLoading = ref(false)
 
 onMounted(() => {
   latest();
+})
+
+onUnmounted(() => {
+  clearEmailPreview()
 })
 
 const openSelect = () => {
@@ -282,11 +289,12 @@ function typeSelectChange() {
 }
 
 function jumpContent(email) {
-  emailStore.contentData.email = email
-  emailStore.contentData.delType = 'physics'
-  emailStore.contentData.showStar = false
-  emailStore.contentData.showReply = false
-  router.push({name: 'content'})
+  openEmailPreview(email, {
+    delType: 'physics',
+    showStar: false,
+    showReply: false,
+    route: { name: 'content' },
+  })
 }
 
 

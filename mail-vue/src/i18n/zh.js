@@ -114,6 +114,7 @@ const zh = {
     date: '时间',
     roleDesc: '权限身份',
     noSubject: '无主题',
+    selectEmailToPreview: '选择一封邮件以预览',
     recipient: '收件人',
     cc: '抄送',
     bcc: '密送',

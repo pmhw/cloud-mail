@@ -114,6 +114,7 @@ const en = {
     date: 'Date',
     roleDesc: 'Role',
     noSubject: 'No subject',
+    selectEmailToPreview: 'Select an email to preview',
     recipient: 'To',
     cc: 'Cc',
     bcc: 'Bcc',

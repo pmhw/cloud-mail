@@ -1,35 +1,38 @@
 <template>
-  <emailScroll ref="sendScroll"
-               :cancel-success="cancelStar"
-               :star-success="addStar"
-               :getEmailList="getEmailList"
-               :emailDelete="emailDelete"
-               :star-add="starAdd"
-               show-status
-               actionLeft="4px"
-               :star-cancel="starCancel"
-               @jump="jumpContent"
-               :time-sort="params.timeSort"
-               :type="'send'"
-  >
-    <template #first>
-      <Icon class="icon" @click="changeTimeSort" icon="material-symbols-light:timer-arrow-down-outline"
-            v-if="params.timeSort === 0" width="28" height="28"/>
-      <Icon class="icon" @click="changeTimeSort" icon="material-symbols-light:timer-arrow-up-outline" v-else
-            width="28" height="28"/>
-    </template>
-  </emailScroll>
+  <EmailSplit>
+    <emailScroll ref="sendScroll"
+                 :cancel-success="cancelStar"
+                 :star-success="addStar"
+                 :getEmailList="getEmailList"
+                 :emailDelete="emailDelete"
+                 :star-add="starAdd"
+                 show-status
+                 actionLeft="4px"
+                 :star-cancel="starCancel"
+                 @jump="jumpContent"
+                 :time-sort="params.timeSort"
+                 :type="'send'"
+    >
+      <template #first>
+        <Icon class="icon" @click="changeTimeSort" icon="material-symbols-light:timer-arrow-down-outline"
+              v-if="params.timeSort === 0" width="28" height="28"/>
+        <Icon class="icon" @click="changeTimeSort" icon="material-symbols-light:timer-arrow-up-outline" v-else
+              width="28" height="28"/>
+      </template>
+    </emailScroll>
+  </EmailSplit>
 </template>
 
 <script setup>
 import {useAccountStore} from "@/store/account.js";
 import {useEmailStore} from "@/store/email.js";
 import emailScroll from "@/components/email-scroll/index.vue"
+import EmailSplit from "@/components/email-split/index.vue"
 import {emailList, emailDelete} from "@/request/email.js";
 import {starAdd, starCancel} from "@/request/star.js";
-import {defineOptions, onMounted, reactive, ref, watch} from "vue";
-import router from "@/router/index.js";
+import {defineOptions, onMounted, onUnmounted, reactive, ref, watch} from "vue";
 import {Icon} from "@iconify/vue";
+import { openEmailPreview, clearEmailPreview } from "@/utils/email-preview.js";
 
 defineOptions({
   name: 'send'
@@ -46,7 +49,12 @@ onMounted(() => {
   emailStore.sendScroll = sendScroll;
 })
 
+onUnmounted(() => {
+  clearEmailPreview()
+})
+
 watch(() => accountStore.currentAccountId, () => {
+  clearEmailPreview()
   sendScroll.value.refreshList();
 })
 
@@ -56,11 +64,11 @@ function changeTimeSort() {
 }
 
 function jumpContent(email) {
-  emailStore.contentData.email = email
-  emailStore.contentData.delType = 'logic'
-  emailStore.contentData.showStar = true
-  emailStore.contentData.showReply = true
-  router.push('/mail')
+  openEmailPreview(email, {
+    delType: 'logic',
+    showStar: true,
+    showReply: true,
+  })
 }
 
 function addStar(email) {

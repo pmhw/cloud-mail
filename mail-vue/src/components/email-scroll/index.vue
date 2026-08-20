@@ -38,7 +38,7 @@
                         :key="keyCount"
         >
           <template #default="{ data: item, index }" >
-            <div :class="'email-row ' + props.type"
+            <div :class="['email-row', props.type, { selected: item.emailId === emailStore.selectedEmailId }]"
                  :data-checked="item.checked"
                  @click="jumpDetails(item)"
                  v-if="!item.expand"
@@ -1016,6 +1016,11 @@ function loadData() {
     /* 触屏 */
     user-select: none;
   }
+
+  &.selected {
+    background: var(--el-color-primary-light-9);
+  }
+
   &.all-email {
     height: 65px;
     @media (max-width: 1366px) {

@@ -26,7 +26,7 @@
         </div>
       </div>
       <div class="container">
-        <div class="addr-row">
+        <div class="addr-row" @paste.capture="(e) => onAddrPaste(e, 'receiveEmail')">
           <el-input-tag class="addr-input" @add-tag="(val) => addTagChange(val, 'receiveEmail')" tag-type="primary" @input="(val) => inputChange(val, 'receiveEmail')" size="default" v-model="form.receiveEmail" >
             <template #prefix>
               <div class="item-title" >{{ $t('recipient') }}</div>
@@ -37,6 +37,7 @@
                   :show-arrow="false"
                   :no-match-text="' '"
                   :no-data-text="' '"
+                  v-model="selectModel.receiveEmail"
                   @visible-change="selectStatusChange"
                   @change="(val) => selectChange(val, 'receiveEmail')"
               >
@@ -56,7 +57,7 @@
             <Icon icon="fa7-solid:user-plus" width="20" height="20" class="add-contact" @click.stop="openContacts('receiveEmail')" />
           </div>
         </div>
-        <div class="addr-row" v-if="showCc">
+        <div class="addr-row" v-if="showCc" @paste.capture="(e) => onAddrPaste(e, 'cc')">
           <el-input-tag class="addr-input" @add-tag="(val) => addTagChange(val, 'cc')" tag-type="primary" @input="(val) => inputChange(val, 'cc')" size="default" v-model="form.cc" >
             <template #prefix>
               <div class="item-title" >{{ $t('cc') }}</div>
@@ -67,6 +68,7 @@
                   :show-arrow="false"
                   :no-match-text="' '"
                   :no-data-text="' '"
+                  v-model="selectModel.cc"
                   @visible-change="ccSelectStatusChange"
                   @change="(val) => selectChange(val, 'cc')"
               >
@@ -84,7 +86,7 @@
             <Icon icon="fa7-solid:user-plus" width="20" height="20" class="add-contact" @click.stop="openContacts('cc')" />
           </div>
         </div>
-        <div class="addr-row" v-if="showBcc">
+        <div class="addr-row" v-if="showBcc" @paste.capture="(e) => onAddrPaste(e, 'bcc')">
           <el-input-tag class="addr-input" @add-tag="(val) => addTagChange(val, 'bcc')" tag-type="primary" @input="(val) => inputChange(val, 'bcc')" size="default" v-model="form.bcc" >
             <template #prefix>
               <div class="item-title" >{{ $t('bcc') }}</div>
@@ -95,6 +97,7 @@
                   :show-arrow="false"
                   :no-match-text="' '"
                   :no-data-text="' '"
+                  v-model="selectModel.bcc"
                   @visible-change="bccSelectStatusChange"
                   @change="(val) => selectChange(val, 'bcc')"
               >
@@ -266,6 +269,11 @@ const form = reactive({
 const selectRecipientList = ref([])
 const selectCcList = ref([])
 const selectBccList = ref([])
+const selectModel = reactive({
+  receiveEmail: '',
+  cc: '',
+  bcc: '',
+})
 
 const contacts = computed(() => writerStore.sendRecipientRecord.map(item => ({email: item})))
 
@@ -316,7 +324,12 @@ function clearSelectContact() {
 }
 
 function selectChange(value, field = 'receiveEmail') {
-  form[field].push(value)
+  if (value && isEmail(value) && !form[field].includes(value)) {
+    form[field].push(value)
+  }
+  nextTick(() => {
+    selectModel[field] = ''
+  })
 }
 
 function selectStatusChange(status) {
@@ -359,24 +372,71 @@ function inputChange(value, field = 'receiveEmail') {
   }
 }
 
-function addTagChange(val, field = 'receiveEmail') {
+function extractEmail(part) {
+  const trimmed = String(part || '').trim()
+  if (!trimmed) return ''
+  const angled = trimmed.match(/<([^>]+)>/)
+  const email = (angled ? angled[1] : trimmed).trim().replace(/^mailto:/i, '')
+  return isEmail(email) ? email : ''
+}
 
-  const emails = Array.from(new Set(
-      val.split(/[,，]/).map(item => item.trim()).filter(item => item)
-  ));
+function splitEmails(val) {
+  const chunks = Array.isArray(val) ? val : [val]
+  const emails = []
+  for (const chunk of chunks) {
+    const parts = String(chunk ?? '').split(/[,，;；\n\r]+/)
+    for (const part of parts) {
+      const email = extractEmail(part)
+      if (email) {
+        emails.push(email)
+        continue
+      }
+      for (const token of part.trim().split(/\s+/)) {
+        const tokenEmail = extractEmail(token)
+        if (tokenEmail) emails.push(tokenEmail)
+      }
+    }
+  }
+  return Array.from(new Set(emails))
+}
 
-  form[field].splice(form[field].length - 1, 1)
-
+function appendEmails(field, emails) {
   let has = false
   emails.forEach(email => {
-    if (isEmail(email) && !form[field].includes(email)) {
+    if (!form[field].includes(email)) {
       form[field].push(email)
       has = true
     }
   })
-  if (field === 'receiveEmail' && selectStatus && has) openSelect('receiveEmail')
-  if (field === 'cc' && ccSelectStatus && has) openSelect('cc')
-  if (field === 'bcc' && bccSelectStatus && has) openSelect('bcc')
+  return has
+}
+
+function closeSuggest(field) {
+  if (field === 'receiveEmail' && selectStatus) openSelect('receiveEmail')
+  if (field === 'cc' && ccSelectStatus) openSelect('cc')
+  if (field === 'bcc' && bccSelectStatus) openSelect('bcc')
+}
+
+function onAddrPaste(event, field = 'receiveEmail') {
+  const text = event.clipboardData?.getData('text') || ''
+  const emails = splitEmails(text)
+  if (!emails.length) return
+
+  event.preventDefault()
+  event.stopPropagation()
+  const has = appendEmails(field, emails)
+  if (has) closeSuggest(field)
+}
+
+function addTagChange(val, field = 'receiveEmail') {
+  const rawItems = (Array.isArray(val) ? val : [val]).map(item => String(item ?? ''))
+  const removeCount = Math.min(rawItems.length || 1, form[field].length)
+  if (removeCount > 0) {
+    form[field].splice(form[field].length - removeCount, removeCount)
+  }
+
+  const has = appendEmails(field, splitEmails(val))
+  if (has) closeSuggest(field)
 }
 
 function clearContent() {
@@ -625,6 +685,9 @@ function resetForm() {
   form.draftId = null
   showCc.value = false
   showBcc.value = false
+  selectModel.receiveEmail = ''
+  selectModel.cc = ''
+  selectModel.bcc = ''
   dragOver.value = false
   dragDepth = 0
   backReply.content = ''
@@ -1180,12 +1243,26 @@ function close() {
 
 .addr-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
 
   .addr-input {
     flex: 1;
     min-width: 0;
+
+    :deep(.el-input-tag) {
+      height: auto;
+      min-height: var(--el-component-size, 32px);
+    }
+
+    :deep(.el-input-tag__inner) {
+      flex-wrap: wrap;
+    }
+
+    :deep(.el-input-tag__input) {
+      min-width: 8rem !important;
+      flex: 1 1 8rem;
+    }
   }
 
   .addr-actions {
@@ -1193,6 +1270,7 @@ function close() {
     align-items: center;
     gap: 8px;
     flex-shrink: 0;
+    min-height: var(--el-component-size, 32px);
   }
 }
 

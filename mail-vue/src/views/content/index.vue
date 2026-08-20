@@ -9,6 +9,12 @@
       </span>
       <Icon class="icon" v-if="emailStore.contentData.showReply" v-perm="'email:send'"  @click="openReply" icon="la:reply" width="21" height="21" />
       <Icon class="icon" v-if="emailStore.contentData.showReply" v-perm="'email:send'"  @click="openForward" icon="iconoir:arrow-up-right" width="20" height="20" />
+      <el-button
+          v-if="email.status === 9"
+          size="small"
+          type="warning"
+          @click="cancelSchedule"
+      >{{ $t('cancelSchedule') }}</el-button>
     </div>
     <div></div>
     <el-scrollbar class="scrollbar">
@@ -16,6 +22,14 @@
         <div class="email-title">
           {{ email.subject }}
         </div>
+        <el-alert
+            v-if="email.status === 9 && email.scheduledAt"
+            :closable="false"
+            :title="t('scheduledAtTip', { time: formatDetailDate(email.scheduledAt) })"
+            class="email-msg schedule-alert"
+            type="info"
+            show-icon
+        />
         <div class="content">
           <div class="email-info">
             <div>
@@ -80,7 +94,7 @@ import ShadowHtml from '@/components/shadow-html/index.vue'
 import {reactive, ref, watch, onMounted, onUnmounted, computed} from "vue";
 import {useRouter} from 'vue-router'
 import {ElMessage, ElMessageBox} from 'element-plus'
-import {emailDelete, emailRead} from "@/request/email.js";
+import {emailDelete, emailRead, emailCancelSchedule} from "@/request/email.js";
 import {Icon} from "@iconify/vue";
 import {useEmailStore} from "@/store/email.js";
 import {useAccountStore} from "@/store/account.js";
@@ -226,6 +240,26 @@ const handleBack = () => {
   router.back()
 }
 
+function cancelSchedule() {
+  const mail = email.value
+  if (!mail) return
+  ElMessageBox.confirm(t('cancelScheduleConfirm'), {
+    confirmButtonText: t('confirm'),
+    cancelButtonText: t('cancel'),
+    type: 'warning'
+  }).then(() => {
+    emailCancelSchedule(mail.emailId).then(() => {
+      ElMessage({
+        message: t('cancelScheduleSuccess'),
+        type: 'success',
+        plain: true,
+      })
+      emailStore.deleteIds = [mail.emailId]
+      handleBack()
+    })
+  })
+}
+
 const handleDelete = () => {
   const mail = email.value
   if (!mail) return
@@ -303,6 +337,12 @@ const handleDelete = () => {
     font-size: 20px;
     font-weight: bold;
     margin-bottom: 10px;
+  }
+
+  .schedule-alert {
+    margin-bottom: 15px;
+    max-width: 520px;
+    width: fit-content;
   }
 
   .htm-scrollbar {

@@ -24,3 +24,7 @@ export function emailSend(form,progress) {
         noMsg: true
     })
 }
+
+export function emailCancelSchedule(emailId) {
+    return http.post('/email/cancelSchedule', { emailId })
+}

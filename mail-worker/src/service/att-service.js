@@ -157,7 +157,7 @@ const attService = {
 			attData.key = att.key;
 			attData.size = att.buff.length;
 			attData.filename = att.filename;
-			attData.mimeType = att.type;
+			attData.mimeType = att.contentType || att.mimeType || att.type || 'application/octet-stream';
 			attData.type = attConst.type.ATT;
 			attDataList.push(attData);
 		}
@@ -210,6 +210,38 @@ const attService = {
 				eq(att.type, attConst.type.ATT)
 			))
 			.all();
+	},
+
+	async loadSendAttachments(c, emailId) {
+		const rows = await orm(c).select().from(att).where(
+			and(
+				eq(att.emailId, emailId),
+				eq(att.type, attConst.type.ATT)
+			)
+		).all();
+
+		const result = [];
+		for (const row of rows) {
+			try {
+				const obj = await r2Service.getObj(c, row.key);
+				if (!obj) continue;
+				const buff = obj instanceof ArrayBuffer ? obj : await obj.arrayBuffer();
+				const bytes = new Uint8Array(buff);
+				let binary = '';
+				for (let i = 0; i < bytes.length; i += 0x8000) {
+					binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+				}
+				result.push({
+					filename: row.filename,
+					content: btoa(binary),
+					contentType: row.mimeType || 'application/octet-stream',
+					size: row.size
+				});
+			} catch (e) {
+				console.error('load attachment failed', row.key, e);
+			}
+		}
+		return result;
 	},
 
 	async removeAttByField(c, fieldName, fieldValues) {

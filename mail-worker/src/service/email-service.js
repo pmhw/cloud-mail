@@ -16,12 +16,15 @@ import roleService from './role-service';
 import user from '../entity/user';
 import starService from './star-service';
 import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
 import kvConst from '../const/kv-const';
 import { t } from '../i18n/i18n'
 import domainUtils from '../utils/domain-uitls';
 import account from "../entity/account";
 import { att } from '../entity/att';
 import telegramService from './telegram-service';
+
+dayjs.extend(utc);
 
 const emailService = {
 
@@ -563,7 +566,7 @@ const emailService = {
 		const resendToken = resendTokens[domain];
 		const useCloudflareEmail = !!c.env.email;
 
-		let html = (emailRow.content || '').replace(/\{\{domain\}\}/g, domainUtils.toDomainUrl(r2Domain));
+		let html = (emailRow.content || '').replace(/\{\{domain\}\}/g, (domainUtils.toOssDomain(r2Domain) || '') + '/');
 		const attachments = await attService.loadSendAttachments(c, emailRow.emailId);
 
 		let sendResult = {};

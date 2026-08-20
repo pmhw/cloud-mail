@@ -119,14 +119,31 @@
                     width="22" height="22"/>
             </div>
           </div>
-          <div>
-            <el-button type="primary" @click="sendEmail" v-if="form.sendType === 'reply'">{{ $t('reply') }}</el-button>
-            <el-button type="primary" @click="sendEmail" v-else-if="form.sendType === 'forward'">{{ $t('forward') }}</el-button>
-            <el-button type="primary" @click="sendEmail" v-else>{{ $t('send') }}</el-button>
+          <div class="send-actions">
+            <el-button type="primary" @click="sendEmail()" v-if="form.sendType === 'reply'">{{ $t('reply') }}</el-button>
+            <el-button type="primary" @click="sendEmail()" v-else-if="form.sendType === 'forward'">{{ $t('forward') }}</el-button>
+            <el-button type="primary" @click="sendEmail()" v-else>{{ $t('send') }}</el-button>
+            <el-button @click="openSchedule">
+              {{ $t('scheduleSend') }}
+            </el-button>
           </div>
         </div>
       </div>
     </div>
+    <el-dialog v-model="showSchedule" :title="t('scheduleSend')" width="360px">
+      <el-date-picker
+          v-model="scheduleAt"
+          type="datetime"
+          :placeholder="t('scheduleSendTime')"
+          style="width: 100%"
+          :disabled-date="disableScheduleDate"
+      />
+      <div class="schedule-tip">{{ $t('scheduleSendTip') }}</div>
+      <template #footer>
+        <el-button @click="showSchedule = false">{{ $t('cancel') }}</el-button>
+        <el-button type="primary" @click="confirmSchedule">{{ $t('confirm') }}</el-button>
+      </template>
+    </el-dialog>
     <el-dialog top="10vh" v-model="showContacts" @closed="clearSelectContact" :title="t('recentContacts')">
       <el-table ref="contactsTabRef" row-key="email" :data="contacts" style="height: 445px">
         <el-table-column type="selection" width="32" />
@@ -172,6 +189,7 @@ import dayjs from "dayjs";
 import {useI18n} from "vue-i18n";
 import router from "@/router/index.js";
 import {ElMessageBox} from "element-plus";
+import {toUtc} from "@/utils/day.js";
 
 defineExpose({
   open,
@@ -196,6 +214,8 @@ let sending = false
 const defValue = ref('')
 const contactsTabRef = ref({})
 const showContacts = ref(false)
+const showSchedule = ref(false)
+const scheduleAt = ref(null)
 const mySelect = ref()
 const ccSelect = ref()
 const bccSelect = ref()
@@ -383,7 +403,7 @@ function chooseFile() {
   }
 }
 
-async function sendEmail() {
+async function sendEmail(scheduledAt = null) {
 
   if (form.receiveEmail.length === 0) {
     ElMessage({
@@ -434,8 +454,13 @@ async function sendEmail() {
     return
   }
 
+  const payload = {...toRaw(form)}
+  if (scheduledAt) {
+    payload.scheduledAt = scheduledAt
+  }
+
   percentMessage = ElMessage({
-    message: () => h(sendPercent, {value: percent.value, desc: t('sending')}),
+    message: () => h(sendPercent, {value: percent.value, desc: scheduledAt ? t('scheduling') : t('sending')}),
     dangerouslyUseHTMLString: true,
     plain: true,
     duration: 0,
@@ -445,8 +470,9 @@ async function sendEmail() {
   sending = true
 
   show.value = false
+  showSchedule.value = false
 
-  emailSend(form, (e) => {
+  emailSend(payload, (e) => {
     percent.value = Math.round((e.loaded * 98) / e.total)
   }).then(emailList => {
     const email = emailList[0]
@@ -455,7 +481,7 @@ async function sendEmail() {
     })
 
     ElNotification({
-      title: t('sendSuccessMsg'),
+      title: scheduledAt ? t('scheduleSuccessMsg') : t('sendSuccessMsg'),
       type: "success",
       message: h('span', {style: 'color: teal'}, email.subject),
       position: 'bottom-right'
@@ -478,7 +504,7 @@ async function sendEmail() {
     resetForm();
   }).catch((e) => {
     ElNotification({
-      title: t('sendFailMsg'),
+      title: scheduledAt ? t('scheduleFailMsg') : t('sendFailMsg'),
       type: e.code === 403 ? 'warning' : 'error',
       message: h('span', {style: 'color: teal'}, e.message),
       position: 'bottom-right'
@@ -494,6 +520,38 @@ async function sendEmail() {
     percent.value = 0
     sending = false
   })
+}
+
+function openSchedule() {
+  scheduleAt.value = dayjs().add(1, 'hour').toDate()
+  showSchedule.value = true
+}
+
+function disableScheduleDate(date) {
+  const start = dayjs().startOf('day')
+  const end = dayjs().add(30, 'day').endOf('day')
+  return dayjs(date).isBefore(start) || dayjs(date).isAfter(end)
+}
+
+function confirmSchedule() {
+  if (!scheduleAt.value) {
+    ElMessage({
+      message: t('emptyScheduleTimeMsg'),
+      type: 'error',
+      plain: true,
+    })
+    return
+  }
+  const utcTime = toUtc(scheduleAt.value)
+  if (utcTime.isBefore(dayjs().add(1, 'minute'))) {
+    ElMessage({
+      message: t('scheduleTimeTooSoon'),
+      type: 'error',
+      plain: true,
+    })
+    return
+  }
+  sendEmail(utcTime.format('YYYY-MM-DD HH:mm:ss'))
 }
 
 function addRecipientRecord() {
@@ -915,6 +973,14 @@ function close() {
         display: grid;
         grid-template-columns: auto auto 1fr auto;
 
+        .send-actions {
+          display: flex;
+          gap: 8px;
+          align-items: center;
+          flex-wrap: wrap;
+          justify-content: flex-end;
+        }
+
         .att-add {
           cursor: pointer;
         }
@@ -977,6 +1043,12 @@ function close() {
   display: flex;
   justify-content: end;
   margin-top: 10px;
+}
+
+.schedule-tip {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--secondary-text-color);
 }
 
 .add-contact {

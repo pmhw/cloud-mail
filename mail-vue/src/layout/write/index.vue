@@ -1,6 +1,17 @@
 <template>
   <div class="send" v-show="show">
-    <div class="write-box">
+    <div
+        class="write-box"
+        :class="{ 'drag-over': dragOver }"
+        @dragenter.prevent="onDragEnter"
+        @dragover.prevent="onDragOver"
+        @dragleave.prevent="onDragLeave"
+        @drop.prevent="onDropFiles"
+    >
+      <div class="drop-mask" v-if="dragOver">
+        <Icon icon="iconamoon:attachment-fill" width="40" height="40"/>
+        <div>{{ $t('dropAttachTip') }}</div>
+      </div>
       <div class="title">
         <div class="title-left">
           <span class="title-text">
@@ -217,6 +228,8 @@ const contactsTabRef = ref({})
 const showContacts = ref(false)
 const showSchedule = ref(false)
 const scheduleAt = ref(null)
+const dragOver = ref(false)
+let dragDepth = 0
 const mySelect = ref()
 const ccSelect = ref()
 const bccSelect = ref()
@@ -381,26 +394,60 @@ function delAtt(index) {
   form.attachments.splice(index, 1);
 }
 
+async function addFiles(fileList) {
+  if (!fileList?.length) return
+  for (const file of fileList) {
+    if (!file || file.size === undefined) continue
+    // 忽略目录等非文件项
+    if (file.type === '' && file.size === 0 && !file.name?.includes('.')) continue
+    const content = await fileToBase64(file)
+    form.attachments.push({
+      content,
+      filename: file.name,
+      size: file.size,
+      contentType: file.type || 'application/octet-stream'
+    })
+  }
+}
+
+function hasDragFiles(e) {
+  return Array.from(e.dataTransfer?.types || []).includes('Files')
+}
+
+function onDragEnter(e) {
+  if (!hasDragFiles(e)) return
+  dragDepth++
+  dragOver.value = true
+}
+
+function onDragOver(e) {
+  if (!hasDragFiles(e)) return
+  e.dataTransfer.dropEffect = 'copy'
+  dragOver.value = true
+}
+
+function onDragLeave() {
+  dragDepth = Math.max(0, dragDepth - 1)
+  if (dragDepth === 0) {
+    dragOver.value = false
+  }
+}
+
+async function onDropFiles(e) {
+  dragDepth = 0
+  dragOver.value = false
+  const files = Array.from(e.dataTransfer?.files || [])
+  if (!files.length) return
+  await addFiles(files)
+}
+
 function chooseFile() {
   const doc = document.createElement("input")
   doc.setAttribute("type", "file")
   doc.multiple = true;
   doc.click()
   doc.onchange = async (e) => {
-
-    const fileList = e.target.files;
-
-    for (const file of fileList) {
-
-      const size = file.size
-      const filename = file.name
-      const contentType = file.type
-
-      const content = await fileToBase64(file)
-      form.attachments.push({content, filename, size, contentType})
-
-    }
-
+    await addFiles(e.target.files)
   }
 }
 
@@ -578,6 +625,8 @@ function resetForm() {
   form.draftId = null
   showCc.value = false
   showBcc.value = false
+  dragOver.value = false
+  dragDepth = 0
   backReply.content = ''
   backReply.subject = ''
   backReply.receiveEmail = []
@@ -951,6 +1000,28 @@ function close() {
     display: grid;
     grid-template-rows: auto 1fr;
     overflow: hidden;
+    position: relative;
+
+    &.drag-over {
+      border-color: var(--el-color-primary);
+    }
+
+    .drop-mask {
+      position: absolute;
+      inset: 0;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      background: color-mix(in srgb, var(--el-color-primary) 12%, var(--el-bg-color));
+      border: 2px dashed var(--el-color-primary);
+      border-radius: 8px;
+      color: var(--el-color-primary);
+      font-size: 16px;
+      pointer-events: none;
+    }
     @media (max-width: 1024px) {
       width: 100%;
       height: 100%;

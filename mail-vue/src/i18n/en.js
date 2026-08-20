@@ -130,6 +130,7 @@ const en = {
     delayed: 'Delayed',
     bounced: 'Bounced',
     attachments: 'Attachments',
+    dropAttachTip: 'Drop files here to attach',
     attCount: 'Total {total}',
     emailCount: 'Total {total}',
     error404: '404 Not Found',

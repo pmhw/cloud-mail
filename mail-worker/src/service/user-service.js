@@ -31,18 +31,33 @@ const userService = {
 			throw new BizError(t('authExpired'), 401);
 		}
 
-		const [account, roleRow, permKeys] = await Promise.all([
+		const [accountRow, roleRow, permKeys] = await Promise.all([
 			accountService.selectByEmailIncludeDel(c, userRow.email),
 			roleService.selectById(c, userRow.type),
 			userRow.email === c.env.admin ? Promise.resolve(['*']) : permService.userPermKeys(c, userId)
 		]);
+
+		let account = accountRow;
+
+		// 用户存在但主邮箱账号缺失时自动补建，避免登录读 account.name 报错
+		if (!account) {
+			account = await accountService.insert(c, {
+				userId: userRow.userId,
+				email: userRow.email,
+				name: emailUtils.getName(userRow.email)
+			});
+		}
+
+		if (account.isDel === isDel.DELETE) {
+			throw new BizError(t('isDelUser'), 403);
+		}
 
 		const user = {};
 		user.userId = userRow.userId;
 		user.sendCount = userRow.sendCount;
 		user.email = userRow.email;
 		user.account = account;
-		user.name = account.name;
+		user.name = account.name || emailUtils.getName(userRow.email);
 		user.permKeys = permKeys;
 		user.role = roleRow;
 		user.type = userRow.type;
@@ -50,6 +65,10 @@ const userService = {
 		if (c.env.admin === userRow.email) {
 			user.role = constant.ADMIN_ROLE
 			user.type = 0;
+		}
+
+		if (!user.role) {
+			throw new BizError(t('roleNotExist'), 403);
 		}
 
 		return user;

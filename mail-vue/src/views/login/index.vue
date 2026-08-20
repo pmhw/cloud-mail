@@ -408,6 +408,17 @@ async function saveToken(token) {
   localStorage.setItem('token', token)
   refreshWebsiteConfig()
   const user = await loginUserInfo();
+  if (!user?.account) {
+    localStorage.removeItem('token');
+    ElMessage({
+      message: t('notExistUser') || '账号数据异常，请联系管理员',
+      type: 'error',
+      plain: true,
+    })
+    oauthLoading.value = false;
+    bindLoading.value = false;
+    return
+  }
   accountStore.currentAccountId = user.account.accountId;
   accountStore.currentAccount = user.account;
   userStore.user = user;

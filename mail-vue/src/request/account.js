@@ -12,8 +12,8 @@ export function accountSetName(accountId,name) {
     return http.put('/account/setName', {name,accountId})
 }
 
-export function accountSetSignature(accountId, signature) {
-    return http.put('/account/setSignature', {accountId, signature})
+export function accountSetSignature(accountId, signature, forwardSignature = '') {
+    return http.put('/account/setSignature', {accountId, signature, forwardSignature})
 }
 
 export function accountDelete(accountId) {

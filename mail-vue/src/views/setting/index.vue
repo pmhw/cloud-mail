@@ -33,16 +33,32 @@
     <div class="signature">
       <div class="title">{{$t('emailSignature')}}</div>
       <div class="signature-desc">{{$t('emailSignatureDesc')}}</div>
-      <div class="signature-editor">
-        <tinyEditor
-            ref="signatureEditor"
-            editor-id="signature-editor"
-            :def-value="signature"
-            :auto-focus="false"
-            :simple="true"
-            :height="220"
-        />
-      </div>
+      <el-tabs v-model="signatureTab">
+        <el-tab-pane :label="$t('newMailSignature')" name="new">
+          <div class="signature-editor">
+            <tinyEditor
+                ref="signatureEditor"
+                editor-id="signature-editor"
+                :def-value="signature"
+                :auto-focus="false"
+                :simple="true"
+                :height="220"
+            />
+          </div>
+        </el-tab-pane>
+        <el-tab-pane :label="$t('forwardMailSignature')" name="forward" lazy>
+          <div class="signature-editor">
+            <tinyEditor
+                ref="forwardSignatureEditor"
+                editor-id="forward-signature-editor"
+                :def-value="forwardSignature"
+                :auto-focus="false"
+                :simple="true"
+                :height="220"
+            />
+          </div>
+        </el-tab-pane>
+      </el-tabs>
       <div>
         <el-button type="primary" :loading="signatureLoading" @click="saveSignature">{{$t('save')}}</el-button>
       </div>
@@ -97,8 +113,11 @@ const setNameShow = ref(false)
 const accountName = ref(null)
 const langSelect = ref(settingStore.lang)
 const signature = ref(accountStore.currentAccount?.signature || userStore.user?.account?.signature || '')
+const forwardSignature = ref(accountStore.currentAccount?.forwardSignature || userStore.user?.account?.forwardSignature || '')
 const signatureLoading = ref(false)
 const signatureEditor = ref(null)
+const forwardSignatureEditor = ref(null)
+const signatureTab = ref('new')
 
 defineOptions({
   name: 'setting'
@@ -106,6 +125,7 @@ defineOptions({
 
 watch(() => accountStore.currentAccountId, () => {
   signature.value = accountStore.currentAccount?.signature || ''
+  forwardSignature.value = accountStore.currentAccount?.forwardSignature || ''
 })
 
 async function saveSignature() {
@@ -113,14 +133,22 @@ async function saveSignature() {
   if (!accountId) return
   signatureLoading.value = true
   try {
-    const content = await signatureEditor.value.getContentWithImages()
-    signature.value = content || ''
-    await accountSetSignature(accountId, signature.value)
+    const content = signatureEditor.value?.getContentWithImages
+      ? (await signatureEditor.value.getContentWithImages() || '')
+      : (signature.value || '')
+    const forwardContent = forwardSignatureEditor.value?.getContentWithImages
+      ? (await forwardSignatureEditor.value.getContentWithImages() || '')
+      : (forwardSignature.value || '')
+    signature.value = content
+    forwardSignature.value = forwardContent
+    await accountSetSignature(accountId, signature.value, forwardSignature.value)
     if (accountStore.currentAccount) {
       accountStore.currentAccount.signature = signature.value
+      accountStore.currentAccount.forwardSignature = forwardSignature.value
     }
     if (userStore.user?.account?.accountId === accountId) {
       userStore.user.account.signature = signature.value
+      userStore.user.account.forwardSignature = forwardSignature.value
     }
     ElMessage({
       message: t('saveSuccessMsg'),
@@ -358,6 +386,10 @@ function submitPwd() {
       :deep(.tox-tinymce) {
         border: none;
       }
+    }
+
+    :deep(.el-tabs__header) {
+      margin-bottom: 12px;
     }
   }
 

@@ -598,8 +598,11 @@ function focusChange() {
   if (bccSelectStatus) openSelect('bcc')
 }
 
-function getSignatureHtml() {
-  const signature = accountStore.currentAccount?.signature || userStore.user?.account?.signature || '';
+function getSignatureHtml(type = 'new') {
+  const account = accountStore.currentAccount || userStore.user?.account || {}
+  const signature = type === 'forward'
+    ? (account.forwardSignature || '')
+    : (account.signature || '')
   if (!signature) return '';
   const html = signature.includes('<') ? signature : signature.replace(/\n/g, '<br>');
   return `<div><br></div><div class="mail-signature">${html}</div>`;
@@ -704,7 +707,7 @@ function openForward(email) {
     const ccLine = formatAddressList(email.cc)
     defValue.value = `
     <div></div>
-    ${getSignatureHtml()}
+    ${getSignatureHtml('forward')}
     <div>
     <br>
     ---------- ${t('forwardMail')} ----------<br>
@@ -753,7 +756,7 @@ function openReply(email) {
   setTimeout(() => {
     defValue.value = `
     <div></div>
-    ${getSignatureHtml()}
+    ${getSignatureHtml('new')}
     <div>
     <br>
         ${formatDetailDate(email.createTime)} ${email.name} &lt${email.sendEmail}&gt ${t('wrote')}:
@@ -813,7 +816,7 @@ function openNew() {
   resetForm();
   defValue.value = ''
   setTimeout(() => {
-    defValue.value = getSignatureHtml()
+    defValue.value = getSignatureHtml('new')
     open()
   })
 }
@@ -855,7 +858,7 @@ function close() {
     return;
   }
 
-  const signatureHtml = getSignatureHtml()
+  const signatureHtml = getSignatureHtml('new')
   const currentContent = form.content || editor.value.getContent() || ''
   const isOnlySignature = !form.subject
       && form.receiveEmail.length === 0

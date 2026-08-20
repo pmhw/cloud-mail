@@ -207,6 +207,7 @@ const zh = {
     emptyEmailMsg: '邮箱不能为空',
     notEmailMsg: '输入的邮箱不合法',
     emptyPwdMsg: '密码不能为空',
+    loginAccountMissing: '账号数据异常，请重新初始化或联系管理员',
     pwdLengthMsg: '密码至少六位',
     minEmailPrefix: '邮箱名至少{msg}位',
     confirmPwdFailMsg: '两次密码输入不一致',

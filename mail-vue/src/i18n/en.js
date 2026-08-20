@@ -208,6 +208,7 @@ const en = {
     notEmailMsg: 'Invalid email',
     minEmailPrefix: 'Email must be at least {msg} characters',
     emptyPwdMsg: 'Password cannot be empty',
+    loginAccountMissing: 'Account data is missing. Please re-initialize or contact admin',
     pwdLengthMsg: 'Password must be at least 6 characters',
     confirmPwdFailMsg: 'The two passwords do not match',
     emptyRegKeyMsg: 'Invite code cannot be empty',

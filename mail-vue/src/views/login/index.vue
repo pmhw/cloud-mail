@@ -411,7 +411,7 @@ async function saveToken(token) {
   if (!user?.account) {
     localStorage.removeItem('token');
     ElMessage({
-      message: t('notExistUser') || '账号数据异常，请联系管理员',
+      message: t('loginAccountMissing'),
       type: 'error',
       plain: true,
     })

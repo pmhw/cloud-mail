@@ -9,6 +9,16 @@
       </span>
       <Icon class="icon" v-if="emailStore.contentData.showReply" v-perm="'email:send'"  @click="openReply" icon="la:reply" width="21" height="21" />
       <Icon class="icon" v-if="emailStore.contentData.showReply" v-perm="'email:send'"  @click="openForward" icon="iconoir:arrow-up-right" width="20" height="20" />
+      <Icon
+          class="icon"
+          v-if="email.type === 1"
+          v-perm="'email:send'"
+          :title="$t('editAgain')"
+          @click="openEditAgain"
+          icon="fluent:mail-edit-20-regular"
+          width="20"
+          height="20"
+      />
       <el-button
           v-if="email.status === 9"
           size="small"
@@ -165,6 +175,10 @@ function openReply() {
 
 function openForward() {
   uiStore.writerRef.openForward(email.value)
+}
+
+function openEditAgain() {
+  uiStore.writerRef.openEditAgain(email.value)
 }
 
 function toMessage(message) {

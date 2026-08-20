@@ -215,6 +215,7 @@ const zh = {
     cancelScheduleSuccess: '已取消定时发送',
     reply: '回复',
     forward: '转发',
+    editAgain: '再次编辑',
     confirm: '确定',
     cancel: '取消',
     delEmailConfirm: '确认删除该邮件吗？',

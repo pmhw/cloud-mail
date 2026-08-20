@@ -215,6 +215,7 @@ const en = {
     cancelScheduleSuccess: 'Schedule canceled',
     reply: 'Reply',
     forward: 'Forward',
+    editAgain: 'Edit again',
     confirm: 'Confirm',
     cancel: 'Cancel',
     delEmailConfirm: 'Confirm deleting this email?',

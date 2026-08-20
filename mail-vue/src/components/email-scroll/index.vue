@@ -189,6 +189,14 @@
               </div>
             </template>
           </el-dropdown-item>
+          <el-dropdown-item v-if="['send'].includes(props.type)" v-perm="'email:send'" @click="openEditAgain(rightClickEmail)">
+            <template #default>
+              <div class="right-dropdown-item">
+                <Icon icon="fluent:mail-edit-20-regular" width="20" height="20"  />
+                <span>{{t('editAgain')}}</span>
+              </div>
+            </template>
+          </el-dropdown-item>
           <el-dropdown-item v-if="['email','star','spam'].includes(props.type)" @click="openReply(rightClickEmail)">
             <template #default>
               <div class="right-dropdown-item">
@@ -513,6 +521,10 @@ function openReply(email) {
 
 function openForward(email) {
   uiStore.writerRef.openForward(email)
+}
+
+function openEditAgain(email) {
+  uiStore.writerRef.openEditAgain(email)
 }
 
 function visibleChange(e) {

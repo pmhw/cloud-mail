@@ -196,6 +196,7 @@ defineExpose({
   openNew,
   openReply,
   openForward,
+  openEditAgain,
   openDraft
 })
 
@@ -615,9 +616,10 @@ function formatAddressList(list) {
   }
 }
 
-async function loadForwardAttachments(email) {
+async function loadForwardAttachments(email, onlyNormal = false) {
   const attList = email.attList || [];
   for (const att of attList) {
+    if (onlyNormal && Number(att.type) === 1) continue
     try {
       const url = cvtR2Url(att.key);
       const res = await fetch(url);
@@ -634,6 +636,48 @@ async function loadForwardAttachments(email) {
       console.error(e);
     }
   }
+}
+
+function parseAddressEmails(list) {
+  if (!list) return []
+  try {
+    const arr = typeof list === 'string' ? JSON.parse(list) : list
+    if (!Array.isArray(arr)) return []
+    return arr.map(item => item.address || item).filter(Boolean)
+  } catch (e) {
+    return []
+  }
+}
+
+function openEditAgain(email) {
+  resetForm();
+
+  form.subject = email.subject || ''
+  form.receiveEmail = parseAddressEmails(email.recipient)
+  if (!form.receiveEmail.length && email.toEmail) {
+    form.receiveEmail = [email.toEmail]
+  }
+  form.cc = parseAddressEmails(email.cc)
+  form.bcc = parseAddressEmails(email.bcc)
+  showCc.value = form.cc.length > 0
+  showBcc.value = form.bcc.length > 0
+  form.sendType = ''
+
+  defValue.value = ''
+
+  setTimeout(async () => {
+    const html = formatImage(email.content)
+    defValue.value = html || (email.text
+      ? `<pre style="font-family: inherit;word-break: break-word;white-space: pre-wrap;margin: 0">${email.text}</pre>`
+      : '')
+    await loadForwardAttachments(email, true)
+    open()
+    if (email.accountId) {
+      form.accountId = email.accountId
+      form.sendEmail = email.sendEmail || form.sendEmail
+      form.name = email.name || form.name
+    }
+  })
 }
 
 function openForward(email) {

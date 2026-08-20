@@ -76,8 +76,15 @@ const userService = {
 	},
 
 	async insert(c, params) {
-		const { userId } = await orm(c).insert(user).values({ ...params }).returning().get();
-		return userId;
+		try {
+			const { userId } = await orm(c).insert(user).values({ ...params }).returning().get();
+			return userId;
+		} catch (e) {
+			if (e.message?.includes('UNIQUE') || e.message?.includes('SQLITE_CONSTRAINT')) {
+				throw new BizError(t('isRegAccount'));
+			}
+			throw e;
+		}
 	},
 
 	selectByEmailIncludeDel(c, email) {
@@ -324,12 +331,13 @@ const userService = {
 		}
 
 		const accountRow = await accountService.selectByEmailIncludeDel(c, email);
+		const userRow = await this.selectByEmailIncludeDel(c, email);
 
-		if (accountRow && accountRow.isDel === isDel.DELETE) {
+		if ((accountRow && accountRow.isDel === isDel.DELETE) || (userRow && userRow.isDel === isDel.DELETE)) {
 			throw new BizError(t('isDelUser'));
 		}
 
-		if (accountRow) {
+		if (accountRow || userRow) {
 			throw new BizError(t('isRegAccount'));
 		}
 

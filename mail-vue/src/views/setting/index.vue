@@ -33,12 +33,16 @@
     <div class="signature">
       <div class="title">{{$t('emailSignature')}}</div>
       <div class="signature-desc">{{$t('emailSignatureDesc')}}</div>
-      <el-input
-          v-model="signature"
-          type="textarea"
-          :rows="5"
-          :placeholder="$t('emailSignaturePlaceholder')"
-      />
+      <div class="signature-editor">
+        <tinyEditor
+            ref="signatureEditor"
+            editor-id="signature-editor"
+            :def-value="signature"
+            :auto-focus="false"
+            :simple="true"
+            :height="220"
+        />
+      </div>
       <div>
         <el-button type="primary" :loading="signatureLoading" @click="saveSignature">{{$t('save')}}</el-button>
       </div>
@@ -82,6 +86,7 @@ import {accountSetName, accountSetSignature} from "@/request/account.js";
 import {useAccountStore} from "@/store/account.js";
 import {useI18n} from "vue-i18n";
 import {useSettingStore} from "@/store/setting.js";
+import tinyEditor from '@/components/tiny-editor/index.vue'
 
 const { t } = useI18n()
 const accountStore = useAccountStore()
@@ -93,6 +98,7 @@ const accountName = ref(null)
 const langSelect = ref(settingStore.lang)
 const signature = ref(accountStore.currentAccount?.signature || userStore.user?.account?.signature || '')
 const signatureLoading = ref(false)
+const signatureEditor = ref(null)
 
 defineOptions({
   name: 'setting'
@@ -102,25 +108,28 @@ watch(() => accountStore.currentAccountId, () => {
   signature.value = accountStore.currentAccount?.signature || ''
 })
 
-function saveSignature() {
+async function saveSignature() {
   const accountId = accountStore.currentAccount?.accountId || userStore.user?.account?.accountId
   if (!accountId) return
   signatureLoading.value = true
-  accountSetSignature(accountId, signature.value || '').then(() => {
+  try {
+    const content = await signatureEditor.value.getContentWithImages()
+    signature.value = content || ''
+    await accountSetSignature(accountId, signature.value)
     if (accountStore.currentAccount) {
-      accountStore.currentAccount.signature = signature.value || ''
+      accountStore.currentAccount.signature = signature.value
     }
     if (userStore.user?.account?.accountId === accountId) {
-      userStore.user.account.signature = signature.value || ''
+      userStore.user.account.signature = signature.value
     }
     ElMessage({
       message: t('saveSuccessMsg'),
       type: 'success',
       plain: true,
     })
-  }).finally(() => {
+  } finally {
     signatureLoading.value = false
-  })
+  }
 }
 
 function showSetName() {
@@ -339,8 +348,16 @@ function submitPwd() {
       color: var(--regular-text-color);
     }
 
-    .el-textarea {
-      max-width: 560px;
+    .signature-editor {
+      max-width: 720px;
+      border: 1px solid var(--el-border-color);
+      border-radius: 6px;
+      overflow: hidden;
+      min-height: 220px;
+
+      :deep(.tox-tinymce) {
+        border: none;
+      }
     }
   }
 

@@ -121,7 +121,7 @@ const zh = {
     bcc: '密送',
     forwardMail: '转发的邮件',
     emailSignature: '邮件签名',
-    emailSignatureDesc: '签名会自动插入到新邮件、回复和转发内容中（支持 HTML）',
+    emailSignatureDesc: '签名会自动插入到新邮件、回复和转发内容中，可插入图片',
     emailSignaturePlaceholder: '请输入邮件签名',
     delivered: '发送成功',
     complained: '被标记为垃圾',

@@ -121,7 +121,7 @@ const en = {
     bcc: 'Bcc',
     forwardMail: 'Forwarded message',
     emailSignature: 'Email Signature',
-    emailSignatureDesc: 'Signature is inserted into new, reply and forward emails (HTML supported)',
+    emailSignatureDesc: 'Signature is inserted into new, reply and forward emails. Images are supported.',
     emailSignaturePlaceholder: 'Enter your email signature',
     delivered: 'Delivered',
     complained: 'Complained',

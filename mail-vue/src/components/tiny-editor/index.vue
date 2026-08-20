@@ -15,7 +15,8 @@ import {useSettingStore} from '@/store/setting.js'
 defineExpose({
   clearEditor,
   focus,
-  getContent
+  getContent,
+  getContentWithImages
 })
 
 const props = defineProps({
@@ -26,6 +27,18 @@ const props = defineProps({
   editorId: {
     type: String,
     default: () => `editor-${Date.now()}`
+  },
+  height: {
+    type: [String, Number],
+    default: '100%'
+  },
+  autoFocus: {
+    type: Boolean,
+    default: true
+  },
+  simple: {
+    type: Boolean,
+    default: false
   }
 });
 
@@ -49,7 +62,7 @@ onBeforeUnmount(() => {
 
 watch(() => props.defValue, (newValue) => {
   if (editor.value && editor.value.getContent() !== newValue) {
-    editor.value.setContent(newValue);
+    editor.value.setContent(newValue || '');
   }
 });
 
@@ -86,22 +99,25 @@ function initTinyMCE() {
 }
 
 function initEditor() {
+  const toolbar = props.simple
+    ? 'bold italic forecolor | link image | removeformat'
+    : 'bold emoticons forecolor backcolor italic fontsize | alignleft aligncenter alignright alignjustify | outdent indent |  bullist numlist | link image  | table code preview fullscreen';
+
   window.tinymce.init({
     selector: `#${props.editorId}`,
     statusbar: false,
-    height: "100%",
-    auto_focus: true,
-    //relative_urls: false,  //阻止 img标签域名和网站域名相同 自动把链接转换相对路径
-    //remove_script_host: false, // 阻止删除 URL 中的域名
+    height: props.height,
+    auto_focus: props.autoFocus,
     forced_root_block: 'div',
     skin: `${uiStore.dark ? 'oxide-dark' : 'oxide'}`,
     content_css: `/tinymce/css/index.css,${uiStore.dark ? 'dark' : 'default'}`,
     content_style: `:root {
          --scrollbar-track-color: ${uiStore.dark ? '#141414' : '#FFFFFF'};
          --scrollbar-thumb-color: ${uiStore.dark ? '#8D9095' : '#A8ABB2'};
-    }`,
-    plugins: 'link image advlist lists  emoticons fullscreen  table preview code',
-    toolbar: 'bold emoticons forecolor backcolor italic fontsize | alignleft aligncenter alignright alignjustify | outdent indent |  bullist numlist | link image  | table code preview fullscreen',
+    }
+    img { max-width: 100%; height: auto; }`,
+    plugins: props.simple ? 'link image' : 'link image advlist lists  emoticons fullscreen  table preview code',
+    toolbar,
     toolbar_mode: 'scrolling',
     font_size_formats: '8px 10px 12px 14px 16px 18px 24px 36px',
     emoticons_search: false,
@@ -110,10 +126,11 @@ function initEditor() {
     menubar: false,
     license_key: 'gpl',
     noneditable_class: 'mceNonEditable',
+    paste_data_images: true,
     setup: (ed) => {
       editor.value = ed;
       ed.on('init', () => {
-        ed.setContent(props.defValue);
+        ed.setContent(props.defValue || '');
         isInitialized.value = true;
       });
       ed.on('input change', () => {
@@ -125,7 +142,7 @@ function initEditor() {
         emit('focus', focus);
       })
     },
-    autofocus: true,
+    autofocus: props.autoFocus,
     branding: false,
     file_picker_types: 'image',
     image_dimensions: false,
@@ -165,6 +182,46 @@ function focus() {
 
 function getContent() {
   return editor.value.getContent()
+}
+
+function readFileAsDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result)
+    reader.onerror = reject
+    reader.readAsDataURL(blob)
+  })
+}
+
+async function getContentWithImages() {
+  if (!editor.value) return ''
+  const html = editor.value.getContent()
+  const parser = new DOMParser()
+  const doc = parser.parseFromString(html, 'text/html')
+  const imgs = Array.from(doc.querySelectorAll('img'))
+
+  for (const img of imgs) {
+    const src = img.getAttribute('src') || ''
+    if (src.startsWith('data:image')) continue
+
+    if (src.startsWith('blob:')) {
+      const blobInfo = editor.value.editorUpload.blobCache.getByUri(src)
+      if (blobInfo) {
+        const type = blobInfo.blob().type || 'image/png'
+        img.setAttribute('src', `data:${type};base64,${blobInfo.base64()}`)
+        continue
+      }
+      try {
+        const res = await fetch(src)
+        const blob = await res.blob()
+        img.setAttribute('src', await readFileAsDataUrl(blob))
+      } catch (e) {
+        console.error(e)
+      }
+    }
+  }
+
+  return doc.body.innerHTML
 }
 
 

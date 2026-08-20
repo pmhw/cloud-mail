@@ -225,7 +225,7 @@ const accountService = {
 
 	async setSignature(c, params, userId) {
 		const { signature = '', accountId } = params;
-		if (String(signature).length > 10000) {
+		if (String(signature).length > 500000) {
 			throw new BizError(t('signatureLengthLimit'));
 		}
 		await orm(c).update(account).set({ signature: String(signature) })

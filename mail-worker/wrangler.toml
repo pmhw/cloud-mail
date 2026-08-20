@@ -14,12 +14,12 @@ enabled = true
 binding = "db"
 database_name = "email"
 # 打开 D1「email」详情页，复制 Database ID（一长串 UUID）
-database_id = "在此粘贴D1的Database-ID"
+database_id = "e97e4811-a1d8-46d1-9a6a-1e5dc478902c"
 
 [[kv_namespaces]]
 binding = "kv"
 # 打开 KV「email」详情页，复制 Namespace ID
-id = "在此粘贴KV的Namespace-ID"
+id = "793ad3c749304965bd1f8d54204cfeb5"
 
 # 如果没用 R2，保持注释；用了就把桶名填上并取消注释
 #[[r2_buckets]]

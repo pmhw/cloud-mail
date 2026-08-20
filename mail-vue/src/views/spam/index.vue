@@ -1,16 +1,16 @@
 <template>
   <EmailSplit>
-    <emailScroll ref="scroll"
-                 :cancel-success="cancelStar"
-                 :star-success="addStar"
+    <emailScroll type="spam" ref="scroll"
                  :getEmailList="getEmailList"
                  :emailDelete="emailDelete"
-                 :star-add="starAdd"
-                 :star-cancel="starCancel"
-                 :time-sort="params.timeSort"
                  :email-read="emailRead"
                  :email-spam="emailSpam"
+                 :star-add="starAdd"
+                 :star-cancel="starCancel"
+                 :star-success="addStar"
+                 :cancel-success="cancelStar"
                  :show-unread="true"
+                 :time-sort="params.timeSort"
                  actionLeft="4px"
                  @jump="jumpContent"
     >
@@ -27,33 +27,27 @@
 <script setup>
 import {useAccountStore} from "@/store/account.js";
 import {useEmailStore} from "@/store/email.js";
-import {useSettingStore} from "@/store/setting.js";
 import emailScroll from "@/components/email-scroll/index.vue"
 import EmailSplit from "@/components/email-split/index.vue"
-import {emailList, emailDelete, emailLatest, emailRead, emailSpam} from "@/request/email.js";
+import {emailList, emailDelete, emailRead, emailSpam} from "@/request/email.js";
 import {starAdd, starCancel} from "@/request/star.js";
 import {defineOptions, onMounted, onUnmounted, reactive, ref, watch} from "vue";
-import {sleep} from "@/utils/time-utils.js";
 import {Icon} from "@iconify/vue";
-import { useRoute } from 'vue-router'
 import { openEmailPreview, clearEmailPreview } from "@/utils/email-preview.js";
 
 defineOptions({
-  name: 'email'
+  name: 'spam'
 })
 
-const route = useRoute();
 const emailStore = useEmailStore();
 const accountStore = useAccountStore();
-const settingStore = useSettingStore();
 const scroll = ref({})
 const params = reactive({
   timeSort: 0,
 })
 
 onMounted(() => {
-  emailStore.emailScroll = scroll;
-  latest()
+  emailStore.spamScroll = scroll
 })
 
 onUnmounted(() => {
@@ -79,62 +73,6 @@ function jumpContent(email) {
   })
 }
 
-const existIds = new Set();
-
-async function latest() {
-  while (true) {
-
-    let autoRefresh = settingStore.settings.autoRefresh;
-    await sleep(autoRefresh > 1 ? autoRefresh * 1000 : 3000);
-
-    if (route.name !== 'email') {
-      continue;
-    }
-
-    const latestId = scroll.value.latestEmail?.emailId
-
-    if (!scroll.value.firstLoad && autoRefresh > 1) {
-      try {
-        const accountId = accountStore.currentAccountId
-        const allReceive = scroll.value.latestEmail?.allReceive
-        const curTimeSort = params.timeSort
-        let list = []
-
-        if (accountId === scroll.value.latestEmail?.reqAccountId) {
-          list = await emailLatest(latestId, accountId, allReceive);
-        }
-
-        if (accountId === accountStore.currentAccountId && params.timeSort === curTimeSort && allReceive === accountStore.currentAccount.allReceive) {
-          if (list.length > 0) {
-
-            for (let email of list) {
-
-              email.reqAccountId = accountId;
-              email.allReceive = allReceive;
-
-              if (!existIds.has(email.emailId)) {
-
-                existIds.add(email.emailId)
-                scroll.value.addItem(email)
-
-                await sleep(50)
-              }
-
-            }
-
-          }
-
-        }
-      } catch (e) {
-        if (e.code === 401 || e.code === 403) {
-          settingStore.settings.autoRefresh = 0;
-        }
-        console.error(e)
-      }
-    }
-  }
-}
-
 function addStar(email) {
   emailStore.starScroll?.addItem(email)
 }
@@ -144,15 +82,14 @@ function cancelStar(email) {
 }
 
 function getEmailList(emailId, size) {
-  const accountId =  accountStore.currentAccountId;
+  const accountId = accountStore.currentAccountId;
   const allReceive = accountStore.currentAccount.allReceive;
-  return emailList(accountId, allReceive, emailId, params.timeSort, size, 0).then(data => {
+  return emailList(accountId, allReceive, emailId, params.timeSort, size, 0, 1).then(data => {
     data.latestEmail.reqAccountId = accountId;
     data.latestEmail.allReceive = allReceive;
     return data;
   })
 }
-
 </script>
 <style>
 .icon {

@@ -30,13 +30,15 @@ const emailService = {
 
 	async list(c, params, userId) {
 
-		let { emailId, type, accountId, size, timeSort, allReceive } = params;
+		let { emailId, type, accountId, size, timeSort, allReceive, spam } = params;
 
 		size = Number(size);
 		emailId = Number(emailId);
 		timeSort = Number(timeSort);
 		accountId = Number(accountId);
 		allReceive = Number(allReceive);
+		spam = Number(spam);
+		type = Number(type);
 
 		if (size > 50) {
 			size = 50;
@@ -56,6 +58,10 @@ const emailService = {
 			let accountRow = await accountService.selectById(c, accountId);
 			allReceive = accountRow.allReceive;
 		}
+
+		const spamCondition = type === emailConst.type.RECEIVE
+			? eq(email.spam, spam === emailConst.spam.SPAM ? emailConst.spam.SPAM : emailConst.spam.NORMAL)
+			: eq(1, 1);
 
 		const query = orm(c)
 			.select({
@@ -80,7 +86,8 @@ const emailService = {
 					timeSort ? gt(email.emailId, emailId) : lt(email.emailId, emailId),
 					eq(email.type, type),
 					eq(email.isDel, isDel.NORMAL),
-					eq(account.isDel, isDel.NORMAL)
+					eq(account.isDel, isDel.NORMAL),
+					spamCondition
 				)
 			);
 
@@ -103,7 +110,8 @@ const emailService = {
 					eq(email.userId, userId),
 					eq(email.type, type),
 					eq(email.isDel, isDel.NORMAL),
-					eq(account.isDel, isDel.NORMAL)
+					eq(account.isDel, isDel.NORMAL),
+					spamCondition
 				)
 		).get();
 
@@ -112,7 +120,8 @@ const emailService = {
 				allReceive ? eq(1,1) : eq(email.accountId, accountId),
 				eq(email.userId, userId),
 				eq(email.type, type),
-				eq(email.isDel, isDel.NORMAL)
+				eq(email.isDel, isDel.NORMAL),
+				spamCondition
 			))
 			.orderBy(desc(email.emailId)).limit(1).get();
 
@@ -1016,7 +1025,8 @@ const emailService = {
 					eq(email.isDel, isDel.NORMAL),
 					eq(account.isDel, isDel.NORMAL),
 					allReceive ? eq(1,1) : eq(email.accountId, accountId),
-					eq(email.type, emailConst.type.RECEIVE)
+					eq(email.type, emailConst.type.RECEIVE),
+					eq(email.spam, emailConst.spam.NORMAL)
 				))
 			.orderBy(desc(email.emailId))
 			.limit(20);
@@ -1281,6 +1291,16 @@ const emailService = {
 	async read(c, params, userId) {
 		const { emailIds } = params;
 		await orm(c).update(email).set({ unread: emailConst.unread.READ }).where(and(eq(email.userId, userId), inArray(email.emailId, emailIds)));
+	},
+
+	async setSpam(c, params, userId) {
+		const { emailIds, spam } = params;
+		const spamFlag = Number(spam) === emailConst.spam.SPAM ? emailConst.spam.SPAM : emailConst.spam.NORMAL;
+		await orm(c).update(email).set({ spam: spamFlag }).where(and(
+			eq(email.userId, userId),
+			eq(email.type, emailConst.type.RECEIVE),
+			inArray(email.emailId, emailIds)
+		));
 	}
 };
 

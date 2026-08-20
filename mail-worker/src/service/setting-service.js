@@ -197,6 +197,13 @@ const settingService = {
 		return this.get(c);
 	},
 
+	async setSpamFilter(c, params) {
+		const { spamFrom, spamSubject } = params
+		await orm(c).update(setting).set({ spamFrom, spamSubject }).run();
+		await this.refresh(c);
+		return this.get(c);
+	},
+
 	async websiteConfig(c) {
 
 		const settingRow = await this.get(c, true);

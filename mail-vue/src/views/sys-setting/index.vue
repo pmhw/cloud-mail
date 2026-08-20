@@ -213,6 +213,15 @@
                   </el-button>
                 </div>
               </div>
+              <div class="setting-item">
+                <div><span>{{ $t('spamFilter') }}</span></div>
+                <div>
+                  <el-button class="opt-button" style="margin-top: 0" @click="openSpamFilterForm" size="small"
+                             type="primary">
+                    <Icon icon="fluent:settings-48-regular" width="16" height="16"/>
+                  </el-button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -795,6 +804,25 @@
         </el-form>
         <el-button type="primary" style="width: 100%;" :loading="settingLoading" @click="saveBlackList">{{ $t('save') }}</el-button>
       </el-dialog>
+      <el-dialog v-model="spamFormShow" class="forward-dialog" @closed="resetSpamFilter">
+        <template #header>
+          <div class="forward-head">
+            <span class="forward-set-title">{{ $t('spamFilter') }}</span>
+            <el-tooltip effect="dark" :content="$t('spamFilterDesc')">
+              <Icon class="warning" icon="fe:warning" width="18" height="18"/>
+            </el-tooltip>
+          </div>
+        </template>
+        <el-form>
+          <el-form-item :label="t('spamFromDesc')" label-position="top">
+            <el-input-tag v-model="spamFilterForm.spamFrom" @add-tag="spamFromAddTag"  />
+          </el-form-item>
+          <el-form-item :label="t('spamSubjectDesc')" label-position="top">
+            <el-input-tag v-model="spamFilterForm.spamSubject"/>
+          </el-form-item>
+        </el-form>
+        <el-button type="primary" style="width: 100%;" :loading="settingLoading" @click="saveSpamFilter">{{ $t('save') }}</el-button>
+      </el-dialog>
       <el-dialog v-model="aiCodeFilterShow" class="forward-dialog" @closed="resetAiCodeFilter">
         <template #header>
           <div class="forward-head">
@@ -817,7 +845,7 @@
 
 <script setup>
 import {computed, defineOptions, nextTick, reactive, ref} from "vue";
-import {deleteBackground, setBackground, setBlackList, settingQuery, settingSet} from "@/request/setting.js";
+import {deleteBackground, setBackground, setBlackList, setSpamFilter, settingQuery, settingSet} from "@/request/setting.js";
 import {useSettingStore} from "@/store/setting.js";
 import {useUiStore} from "@/store/ui.js";
 import {useUserStore} from "@/store/user.js";
@@ -850,6 +878,7 @@ const userStore = useUserStore();
 const editTitleShow = ref(false)
 const resendTokenFormShow = ref(false)
 const blackFormShow = ref(false)
+const spamFormShow = ref(false)
 const aiCodeFilterShow = ref(false)
 const r2DomainShow = ref(false)
 const turnstileShow = ref(false)
@@ -918,6 +947,10 @@ const blackListForm = ref({
   blackContent: [],
   blackFrom: []
 })
+const spamFilterForm = ref({
+  spamFrom: [],
+  spamSubject: []
+})
 const aiCodeFilter = ref([])
 
 const authRefreshOptions = computed(() => [
@@ -969,6 +1002,7 @@ function getSettings() {
     resetAddS3Form()
     resetEmailPrefix()
     resetBlackList()
+    resetSpamFilter()
     resetAiCodeFilter()
     nextTick(() => {
       settingReady.value = true
@@ -1254,6 +1288,11 @@ function resetBlackList() {
   blackListForm.value.blackSubject = setting.value.blackSubject ? setting.value.blackSubject.split(',') : []
 }
 
+function resetSpamFilter() {
+  spamFilterForm.value.spamFrom = setting.value.spamFrom ? setting.value.spamFrom.split(',') : []
+  spamFilterForm.value.spamSubject = setting.value.spamSubject ? setting.value.spamSubject.split(',') : []
+}
+
 function resetAiCodeFilter() {
   aiCodeFilter.value = setting.value.aiCodeFilter ? setting.value.aiCodeFilter.split(',') : []
 }
@@ -1297,6 +1336,27 @@ function saveBlackList() {
   })
 }
 
+function saveSpamFilter() {
+  let form = {
+    spamFrom: spamFilterForm.value.spamFrom + '',
+    spamSubject: spamFilterForm.value.spamSubject + ''
+  }
+
+  settingLoading.value = true
+
+  setSpamFilter(form).then(() => {
+    getSettings()
+    ElMessage({
+      message: t('setSuccess'),
+      type: "success",
+      plain: true
+    })
+    spamFormShow.value = false;
+  }).finally(() => {
+    settingLoading.value = false;
+  })
+}
+
 function banEmailAddTag(val) {
   const emails = Array.from(new Set(
       val.split(/[,，]/).map(item => item.trim()).filter(item => item)
@@ -1307,6 +1367,20 @@ function banEmailAddTag(val) {
   emails.forEach(email => {
     if ((isEmail(email) || isDomain(email)) && !blackListForm.value.blackFrom.includes(email)) {
       blackListForm.value.blackFrom.push(email)
+    }
+  })
+}
+
+function spamFromAddTag(val) {
+  const emails = Array.from(new Set(
+      val.split(/[,，]/).map(item => item.trim()).filter(item => item)
+  ));
+
+  spamFilterForm.value.spamFrom.splice(spamFilterForm.value.spamFrom.length - 1, 1)
+
+  emails.forEach(email => {
+    if ((isEmail(email) || isDomain(email)) && !spamFilterForm.value.spamFrom.includes(email)) {
+      spamFilterForm.value.spamFrom.push(email)
     }
   })
 }
@@ -1415,6 +1489,10 @@ function openResendForm() {
 
 function openBlackListForm() {
   blackFormShow.value = true
+}
+
+function openSpamFilterForm() {
+  spamFormShow.value = true
 }
 
 function openAiCodeFilter() {

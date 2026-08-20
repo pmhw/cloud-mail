@@ -33,3 +33,8 @@ app.put('/setting/setBlacklist', async (c) => {
 	return c.json(result.ok(setting));
 })
 
+app.put('/setting/setSpamFilter', async (c) => {
+	const setting = await settingService.setSpamFilter(c, await c.req.json());
+	return c.json(result.ok(setting));
+})
+

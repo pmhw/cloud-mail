@@ -55,6 +55,10 @@ export const emailConst = {
 	unread: {
 		UNREAD: 0,
 		READ: 1
+	},
+	spam: {
+		NORMAL: 0,
+		SPAM: 1
 	}
 }
 

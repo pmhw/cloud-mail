@@ -50,6 +50,8 @@ export const setting = sqliteTable('setting', {
 	blackSubject: text('black_subject').default('').notNull(),
 	blackContent: text('black_content').default('').notNull(),
 	blackFrom: text('black_from').default('').notNull(),
+	spamFrom: text('spam_from').default('').notNull(),
+	spamSubject: text('spam_subject').default('').notNull(),
 	aiCode: integer('ai_code').default(1).notNull(),
 	aiCodeFilter: text('ai_code_filter').default('').notNull(),
 	syncDelete: integer('sync_delete').default(1).notNull()

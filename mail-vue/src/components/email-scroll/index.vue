@@ -165,7 +165,7 @@
               </div>
             </template>
           </el-dropdown-item>
-          <el-dropdown-item v-if="['email'].includes(props.type)" @click="emailRead(rightClickEmail.emailId)" >
+          <el-dropdown-item v-if="['email','spam'].includes(props.type)" @click="emailRead(rightClickEmail.emailId)" >
             <template #default>
               <div class="right-dropdown-item">
                 <Icon icon="fluent:mail-read-20-regular" width="20" height="20" />
@@ -173,7 +173,23 @@
               </div>
             </template>
           </el-dropdown-item>
-          <el-dropdown-item v-if="['email','star'].includes(props.type)" @click="openReply(rightClickEmail)">
+          <el-dropdown-item v-if="['email'].includes(props.type) && props.emailSpam" @click="changeSpam(rightClickEmail, 1)">
+            <template #default>
+              <div class="right-dropdown-item">
+                <Icon icon="fluent:mail-prohibited-20-regular" width="20" height="20" />
+                <span>{{t('markAsSpam')}}</span>
+              </div>
+            </template>
+          </el-dropdown-item>
+          <el-dropdown-item v-if="['spam'].includes(props.type) && props.emailSpam" @click="changeSpam(rightClickEmail, 0)">
+            <template #default>
+              <div class="right-dropdown-item">
+                <Icon icon="fluent:mail-20-regular" width="20" height="20" />
+                <span>{{t('markAsNotSpam')}}</span>
+              </div>
+            </template>
+          </el-dropdown-item>
+          <el-dropdown-item v-if="['email','star','spam'].includes(props.type)" @click="openReply(rightClickEmail)">
             <template #default>
               <div class="right-dropdown-item">
                 <Icon icon="la:reply" width="20" height="20"  />
@@ -181,7 +197,7 @@
               </div>
             </template>
           </el-dropdown-item>
-          <el-dropdown-item v-if="['email','send', 'star'].includes(props.type)" @click="openForward(rightClickEmail)">
+          <el-dropdown-item v-if="['email','send', 'star','spam'].includes(props.type)" @click="openForward(rightClickEmail)">
             <template #default>
               <div class="right-dropdown-item">
                 <Icon icon="iconoir:arrow-up-right" width="19" height="19"  />
@@ -189,7 +205,7 @@
               </div>
             </template>
           </el-dropdown-item>
-          <el-dropdown-item v-if="['email','send', 'star'].includes(props.type)" @click="starChange(rightClickEmail)">
+          <el-dropdown-item v-if="['email','send', 'star','spam'].includes(props.type)" @click="starChange(rightClickEmail)">
             <template #default>
               <div class="right-dropdown-item">
                 <Icon icon="solar:star-line-duotone" width="19" height="19"/>
@@ -253,6 +269,7 @@ const props = defineProps({
   getEmailList: Function,
   emailDelete: Function,
   emailRead: Function,
+  emailSpam: Function,
   starAdd: Function,
   starCancel: Function,
   cancelSuccess: Function,
@@ -611,6 +628,22 @@ function starChange(email) {
       email.isStar = 1;
     })
   }
+}
+
+function changeSpam(email, spam) {
+  if (!props.emailSpam) return
+  props.emailSpam([email.emailId], spam).then(() => {
+    deleteEmail([email.emailId])
+    if (spam === 1) {
+      emailStore.spamScroll?.refreshList?.()
+    } else {
+      emailStore.emailScroll?.refreshList?.()
+    }
+    if (emailStore.selectedEmailId === email.emailId) {
+      emailStore.selectedEmailId = 0
+      emailStore.previewOpen = false
+    }
+  })
 }
 
 function changeAccountShow() {

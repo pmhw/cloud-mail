@@ -39,3 +39,8 @@ app.put('/email/read', async (c) => {
 	return c.json(result.ok());
 })
 
+app.put('/email/spam', async (c) => {
+	await emailService.setSpam(c, await c.req.json(), userContext.getUserId(c));
+	return c.json(result.ok());
+})
+

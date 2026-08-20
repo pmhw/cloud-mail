@@ -29,6 +29,8 @@ export async function email(message, env, ctx) {
 			blackSubject,
 			blackContent,
 			blackFrom,
+			spamFrom,
+			spamSubject,
 			aiCode,
 			aiCodeFilter
 		} = await settingService.query({ env });
@@ -93,6 +95,7 @@ export async function email(message, env, ctx) {
 
 		const toName = email.to.find(item => item.address === message.to)?.name || '';
 		const code = await aiService.extractCode({ env }, email, { aiCode, aiCodeFilter });
+		const isSpam = checkSpam(spamFrom, spamSubject, email);
 
 		const params = {
 			toEmail: message.to,
@@ -112,7 +115,8 @@ export async function email(message, env, ctx) {
 			userId: account ? account.userId : 0,
 			accountId: account ? account.accountId : 0,
 			isDel: isDel.DELETE,
-			status: emailConst.status.SAVING
+			status: emailConst.status.SAVING,
+			spam: isSpam ? emailConst.spam.SPAM : emailConst.spam.NORMAL
 		};
 
 		const attachments = [];
@@ -211,4 +215,27 @@ function checkBlock(blackSubjectStr, blackContentStr, blackFromStr, email) {
 
 	return false
 
+}
+
+function checkSpam(spamFromStr, spamSubjectStr, email) {
+	const spamFromList = spamFromStr ? spamFromStr.split(',').map(item => item.trim()).filter(Boolean) : []
+	const spamSubjectList = spamSubjectStr ? spamSubjectStr.split(',').map(item => item.trim()).filter(Boolean) : []
+
+	for (const spamSubject of spamSubjectList) {
+		if (email.subject?.includes(spamSubject)) {
+			return true
+		}
+	}
+
+	const fromAddress = (email.from?.address || '').toLowerCase()
+	const fromDomain = emailUtils.getDomain(fromAddress).toLowerCase()
+
+	for (const spamFrom of spamFromList) {
+		const rule = spamFrom.toLowerCase()
+		if (fromAddress === rule || fromDomain === rule || fromAddress.endsWith('@' + rule)) {
+			return true
+		}
+	}
+
+	return false
 }

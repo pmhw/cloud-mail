@@ -1,47 +1,53 @@
 name = "cloud-mail"
 main = "src/index.js"
 compatibility_date = "2025-06-04"
+# keep_vars 只保住环境变量，保不住 D1/KV；绑定必须写在下面
 keep_vars = true
 
 [observability]
 enabled = true
 
-#[[d1_databases]]
-#binding = "db"			#d1数据库绑定名默认不可修改
-#database_name = ""		#d1数据库名字
-#database_id = ""		#d1数据库id
+# 你的控制台绑定：db → D1「email」，kv → KV「email」
+# 下面 database_name / 显示名已对齐；还差两处 UUID，点开资源页复制后粘贴过来再推送
 
-#[[kv_namespaces]]
-#binding = "kv"			#kv绑定名默认不可修改
-#id = ""					#kv数据库id
+[[d1_databases]]
+binding = "db"
+database_name = "email"
+# 打开 D1「email」详情页，复制 Database ID（一长串 UUID）
+database_id = "在此粘贴D1的Database-ID"
 
+[[kv_namespaces]]
+binding = "kv"
+# 打开 KV「email」详情页，复制 Namespace ID
+id = "在此粘贴KV的Namespace-ID"
+
+# 如果没用 R2，保持注释；用了就把桶名填上并取消注释
 #[[r2_buckets]]
-#binding = "r2"			#r2对象存储绑定名默认不可修改
-#bucket_name = ""		#r2对象存储桶的名字
+#binding = "r2"
+#bucket_name = "你的R2桶名"
 
 #[[send_email]]
-#name = "email"			#CF发件, 配置后优先使用
+#name = "email"
 
 [ai]
 binding = "ai"
 
 [assets]
-binding = "assets"		#静态资源绑定名默认不可修改
-directory = "./dist"	#前端vue项目打包的静态资源存放位置,默认dist
+binding = "assets"
+directory = "./dist"
 not_found_handling = "single-page-application"
 run_worker_first = true
 
 [triggers]
-crons = ["0 16 * * *"]	#每天晚上12点执行每日任务,刷新分析缓存
-
+crons = ["0 16 * * *"]
 
 [vars]
-#ai_model = ""			#ai模型,不填默认使用@cf/meta/llama-3.1-8b-instruct-fast
-#analysis_cache = false			#是否开启分析数据缓存
-#orm_log = false			#是否sql日志
-#domain = []				#邮件域名可可配置多个 示例: ["example1.com","example2.com"]
-#admin = ""				#管理员的邮箱	示例: admin@example.com
-#jwt_secret = ""			#jwt令牌的密钥,随便填一串字符串
+#ai_model = ""
+#analysis_cache = false
+#orm_log = false
+#domain = []
+#admin = ""
+#jwt_secret = ""
 
 [build]
 command = "pnpm --prefix ../mail-vue install && pnpm --prefix ../mail-vue run build"

@@ -24,8 +24,13 @@ export default {
 		return env.assets.fetch(req);
 	},
 	email: email,
-	async scheduled(c, env, ctx) {
-		if (c.cron === '*/30 * * * *') {
+	async scheduled(event, env, ctx) {
+		if (event.cron === '*/2 * * * *') {
+			await emailService.processScheduled({ env });
+			return;
+		}
+
+		if (event.cron === '*/30 * * * *') {
 			await analysisService.refreshEchartsCache({ env })
 			return;
 		}

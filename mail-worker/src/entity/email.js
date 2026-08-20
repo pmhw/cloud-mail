@@ -20,6 +20,7 @@ export const email = sqliteTable('email', {
 	messageId: text('message_id').default(''),
 	type: integer('type').default(0).notNull(),
 	status: integer('status').default(0).notNull(),
+	scheduledAt: text('scheduled_at'),
 	resendEmailId: text('resend_email_id'),
 	message: text('message'),
 	unread: integer('unread').default(0).notNull(),

@@ -176,7 +176,8 @@ const emailService = {
 			text, //邮件纯文本
 			content, //邮件内容
 			subject, //邮件标题
-			attachments = [] //附件
+			attachments = [], //附件
+			scheduledAt //定时发送时间（UTC 字符串，可选）
 		} = params;
 
 		receiveEmail = this.normalizeEmailList(receiveEmail);
@@ -286,6 +287,30 @@ const emailService = {
 				throw new BizError(t('notExistEmailReply'));
 			}
 
+		}
+
+		const scheduleTime = this.parseScheduleAt(scheduledAt);
+		if (scheduleTime) {
+			return await this.saveScheduledEmail(c, {
+				userId,
+				accountId,
+				accountRow,
+				name,
+				subject,
+				text,
+				html,
+				imageDataList,
+				attachments,
+				receiveEmail,
+				cc,
+				bcc,
+				sendType,
+				emailRow,
+				r2Domain,
+				scheduledAt: scheduleTime,
+				recipientCount,
+				roleRow
+			});
 		}
 
 		let sendResult = {};
@@ -403,6 +428,208 @@ const emailService = {
 		}
 
 		return [ emailResult ];
+	},
+
+	parseScheduleAt(scheduledAt) {
+		if (!scheduledAt) {
+			return null;
+		}
+		const time = dayjs(scheduledAt);
+		if (!time.isValid()) {
+			throw new BizError(t('invalidScheduleTime'));
+		}
+		if (time.isBefore(dayjs().add(1, 'minute'))) {
+			throw new BizError(t('scheduleTimeTooSoon'));
+		}
+		if (time.isAfter(dayjs().add(30, 'day'))) {
+			throw new BizError(t('scheduleTimeTooLate'));
+		}
+		return time.utc().format('YYYY-MM-DD HH:mm:ss');
+	},
+
+	async saveScheduledEmail(c, ctx) {
+		let {
+			userId, accountId, accountRow, name, subject, text, html,
+			imageDataList, attachments, receiveEmail, cc, bcc,
+			sendType, emailRow, r2Domain, scheduledAt, recipientCount, roleRow
+		} = ctx;
+
+		imageDataList = imageDataList.map(item => ({...item, contentId: `<${item.contentId}>`}))
+		html = this.imgReplace(html, imageDataList, r2Domain);
+
+		const emailData = {
+			sendEmail: accountRow.email,
+			name,
+			subject,
+			content: html,
+			text,
+			accountId,
+			status: emailConst.status.SCHEDULED,
+			type: emailConst.type.SEND,
+			userId,
+			scheduledAt,
+			recipient: JSON.stringify(receiveEmail.map(item => ({ address: item, name: '' }))),
+			cc: JSON.stringify(cc.map(item => ({ address: item, name: '' }))),
+			bcc: JSON.stringify(bcc.map(item => ({ address: item, name: '' })))
+		};
+
+		if (sendType === 'reply') {
+			emailData.inReplyTo = emailRow.messageId;
+			emailData.relation = emailRow.messageId;
+		}
+
+		const emailResult = await orm(c).insert(email).values(emailData).returning().get();
+
+		if (imageDataList.length > 0) {
+			if (imageDataList.length > 10) {
+				throw new BizError(t('imageAttLimit'));
+			}
+			await attService.saveArticleAtt(c, imageDataList, userId, accountId, emailResult.emailId);
+		}
+
+		if (attachments?.length > 0) {
+			if (attachments.length > 10) {
+				throw new BizError(t('attLimit'));
+			}
+			await attService.saveSendAtt(c, attachments, userId, accountId, emailResult.emailId);
+		}
+
+		const attList = await attService.selectByEmailIds(c, [emailResult.emailId]);
+		emailResult.attList = attList;
+
+		if (roleRow.sendCount && roleRow.sendType !== 'internal') {
+			await userService.incrUserSendCount(c, recipientCount, userId);
+		}
+
+		return [ emailResult ];
+	},
+
+	async cancelSchedule(c, params, userId) {
+		const emailId = Number(params.emailId);
+		const emailRow = await this.selectById(c, emailId);
+		if (!emailRow || emailRow.userId !== userId) {
+			throw new BizError(t('notExistEmailReply'));
+		}
+		if (emailRow.status !== emailConst.status.SCHEDULED) {
+			throw new BizError(t('notScheduledEmail'));
+		}
+		await this.delete(c, { emailIds: String(emailId) }, userId);
+	},
+
+	async processScheduled(c) {
+		const now = dayjs().utc().format('YYYY-MM-DD HH:mm:ss');
+		const list = await orm(c).select().from(email).where(
+			and(
+				eq(email.status, emailConst.status.SCHEDULED),
+				eq(email.type, emailConst.type.SEND),
+				lte(email.scheduledAt, now),
+				eq(email.isDel, isDel.NORMAL)
+			)
+		).orderBy(asc(email.scheduledAt)).limit(20).all();
+
+		for (const emailRow of list) {
+			try {
+				await this.dispatchScheduled(c, emailRow);
+			} catch (e) {
+				console.error(`定时发送失败 emailId=${emailRow.emailId}`, e);
+				await orm(c).update(email).set({
+					status: emailConst.status.FAILED,
+					message: JSON.stringify({ message: e.message || String(e) })
+				}).where(eq(email.emailId, emailRow.emailId)).run();
+			}
+		}
+	},
+
+	async dispatchScheduled(c, emailRow) {
+		const claim = await c.env.db.prepare(
+			`UPDATE email SET status = ? WHERE email_id = ? AND status = ?`
+		).bind(emailConst.status.SENT, emailRow.emailId, emailConst.status.SCHEDULED).run();
+
+		if (!claim.meta?.changes) {
+			return;
+		}
+
+		const { resendTokens, r2Domain, domainList } = await settingService.query(c);
+		const receiveEmail = this.normalizeEmailList(JSON.parse(emailRow.recipient || '[]'));
+		const cc = this.normalizeEmailList(JSON.parse(emailRow.cc || '[]'));
+		const bcc = this.normalizeEmailList(JSON.parse(emailRow.bcc || '[]'));
+		const allRecipientEmails = [...receiveEmail, ...cc, ...bcc];
+		const allInternal = allRecipientEmails.every(item => {
+			const domain = '@' + emailUtils.getDomain(item);
+			return domainList.includes(domain);
+		});
+
+		const domain = emailUtils.getDomain(emailRow.sendEmail);
+		const resendToken = resendTokens[domain];
+		const useCloudflareEmail = !!c.env.email;
+
+		let html = (emailRow.content || '').replace(/\{\{domain\}\}/g, domainUtils.toDomainUrl(r2Domain));
+		const attachments = await attService.loadSendAttachments(c, emailRow.emailId);
+
+		let sendResult = {};
+		if (!allInternal) {
+			if (useCloudflareEmail) {
+				sendResult = await this.sendByCloudflareEmail(c, {
+					name: emailRow.name,
+					accountEmail: emailRow.sendEmail,
+					receiveEmail,
+					cc,
+					bcc,
+					subject: emailRow.subject,
+					text: emailRow.text,
+					html,
+					attachments,
+					sendType: emailRow.inReplyTo ? 'reply' : '',
+					messageId: emailRow.inReplyTo
+				});
+			} else if (resendToken) {
+				sendResult = await this.sendByResend(resendToken, {
+					name: emailRow.name,
+					accountEmail: emailRow.sendEmail,
+					receiveEmail,
+					cc,
+					bcc,
+					subject: emailRow.subject,
+					text: emailRow.text,
+					html,
+					attachments,
+					sendType: emailRow.inReplyTo ? 'reply' : '',
+					messageId: emailRow.inReplyTo
+				});
+			} else {
+				throw new BizError(t('noSendProvider'));
+			}
+		}
+
+		const { data, error } = sendResult;
+		if (error) {
+			throw new BizError(error.message);
+		}
+
+		const status = useCloudflareEmail || allInternal
+			? emailConst.status.DELIVERED
+			: emailConst.status.SENT;
+
+		await orm(c).update(email).set({
+			status,
+			resendEmailId: data?.id || null,
+			scheduledAt: null
+		}).where(eq(email.emailId, emailRow.emailId)).run();
+
+		if (allInternal) {
+			const emailResult = { ...emailRow, status, content: html };
+			const attList = await attService.selectByEmailIds(c, [emailRow.emailId]);
+			await this.HandleOnSiteEmail(c, receiveEmail, emailResult, attList, cc, bcc);
+		}
+
+		const recipientCount = allRecipientEmails.length;
+		const dateStr = dayjs().format('YYYY-MM-DD');
+		let daySendTotal = await c.env.kv.get(kvConst.SEND_DAY_COUNT + dateStr);
+		if (!daySendTotal) {
+			await c.env.kv.put(kvConst.SEND_DAY_COUNT + dateStr, JSON.stringify(recipientCount), { expirationTtl: 60 * 60 * 24 });
+		} else {
+			await c.env.kv.put(kvConst.SEND_DAY_COUNT + dateStr, JSON.stringify(Number(daySendTotal) + recipientCount), { expirationTtl: 60 * 60 * 24 });
+		}
 	},
 
 	normalizeEmailList(list) {

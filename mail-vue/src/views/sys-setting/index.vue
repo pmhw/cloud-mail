@@ -743,11 +743,12 @@
           </div>
         </template>
       </el-dialog>
-      <el-dialog v-model="addS3Show" :title="t('s3Configuration')" width="340" @closed="resetAddS3Form">
+      <el-dialog v-model="addS3Show" :title="t('s3Configuration')" width="360" @closed="resetAddS3Form">
+        <div class="s3-tip">{{ $t('s3ConfigurationDesc') }}</div>
         <form @submit.prevent>
           <el-input class="dialog-input" type="text" placeholder="Bucket" v-model="s3.bucket" @keyup.enter="saveS3"/>
-          <el-input class="dialog-input" type="text" placeholder="Endpoint" v-model="s3.endpoint" @keyup.enter="saveS3"/>
-          <el-input class="dialog-input" type="text" placeholder="Region" v-model="s3.region" @keyup.enter="saveS3"/>
+          <el-input class="dialog-input" type="text" placeholder="Endpoint e.g. https://s3.cn-north-1.jdcloud-oss.com" v-model="s3.endpoint" @keyup.enter="saveS3"/>
+          <el-input class="dialog-input" type="text" placeholder="Region e.g. cn-north-1" v-model="s3.region" @keyup.enter="saveS3"/>
           <el-input class="dialog-input" type="text" :placeholder="setting.s3AccessKey || 'Access Key'"
                     v-model="s3.s3AccessKey" @keyup.enter="saveS3"/>
           <el-input style="margin-bottom: 10px" type="text" :placeholder="setting.s3SecretKey || 'Secret Key'" v-model="s3.s3SecretKey" @keyup.enter="saveS3"/>
@@ -1947,6 +1948,13 @@ function editSetting(settingForm, refreshStatus = true) {
 .prefix-filter {
   display: flex;
   flex-direction: column;
+}
+
+.s3-tip {
+  color: var(--regular-text-color);
+  font-size: 13px;
+  line-height: 1.5;
+  margin-bottom: 12px;
 }
 
 .s3-button {

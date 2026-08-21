@@ -7,32 +7,8 @@
         <Icon style="color: var(--el-border-color)" icon="solar:star-line-duotone" width="18" height="18"/>
       </div>
       <div v-if="!showStar"></div>
-      <div class="title" :class="accountShow ? 'title-column' : 'title-column'">
-
-        <div class="email-sender">
-          <div class="email-status" v-if="showStatus">
-
-          </div>
-          <div v-else></div>
-          <span class="name">
-             <span>
-               <el-skeleton animated>
-                 <template #template>
-                   <el-skeleton-item variant="text" class="name-skeleton"/>
-                 </template>
-               </el-skeleton>
-             </span>
-             <span></span>
-          </span>
-          <span class="phone-time">
-            <el-skeleton animated>
-              <template #template>
-                <el-skeleton-item variant="text" style="width: 50px;height: 1rem;"/>
-              </template>
-            </el-skeleton>
-          </span>
-        </div>
-        <div>
+      <div class="title">
+        <div class="email-main">
           <div class="email-text-skeleton">
             <el-skeleton animated>
               <template #template>
@@ -58,10 +34,29 @@
                 </template>
               </el-skeleton>
             </div>
-            <div class="del-status" v-if="item.isDel">
-              <el-tag type="danger" size="small">{{ $t('deleted') }}</el-tag>
-            </div>
           </div>
+        </div>
+        <div class="email-sender">
+          <div class="email-status" v-if="showStatus">
+          </div>
+          <div v-else></div>
+          <span class="name">
+             <span>
+               <el-skeleton animated>
+                 <template #template>
+                   <el-skeleton-item variant="text" class="name-skeleton"/>
+                 </template>
+               </el-skeleton>
+             </span>
+             <span></span>
+          </span>
+          <span class="phone-time">
+            <el-skeleton animated>
+              <template #template>
+                <el-skeleton-item variant="text" style="width: 50px;height: 1rem;"/>
+              </template>
+            </el-skeleton>
+          </span>
         </div>
       </div>
       <div class="email-right-skeleton" :style="showUserInfo ? 'align-self: start;':''">
@@ -75,6 +70,8 @@
   </div>
 </template>
 <script setup>
+import {Icon} from "@iconify/vue";
+
 const props = defineProps({
   rows: {
     type: Number,
@@ -98,41 +95,7 @@ const props = defineProps({
   },
   type: {
     type: String,
-    default: ''
+    default: 'email'
   }
 })
-import {Icon} from "@iconify/vue";
 </script>
-
-<style scoped lang="scss">
-
-.phone-star {
-  display: none;
-}
-
-.pc-star {
-  display: flex;
-  width: 40px;
-}
-
-:deep(.el-skeleton__item) {
-  position: relative;
-  top: 2px;
-}
-
-@media (max-width: 1366px) {
-  .pc-star {
-    display: none;
-  }
-  .phone-star {
-    display: block;
-    align-self: end;
-    padding-right: 16px;
-    padding-top: 8px;
-  }
-  .star-pd {
-    padding-top: 6px !important;
-  }
-}
-
-</style>

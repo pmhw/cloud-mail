@@ -55,32 +55,8 @@
                 <Icon v-else icon="solar:star-line-duotone" width="18" height="18"/>
               </div>
               <div v-if="!showStar"></div>
-              <div class="title" :class="accountShow ? 'title-column' : 'title-column'">
-
-                <div class="email-sender" :style=" (showStatus ? 'gap: 10px;' : '') + ((item.unread === EmailUnreadEnum.UNREAD && showUnread)  ? 'font-weight: bold' : '')">
-                  <div class="email-status" v-if="showStatus">
-                    <el-tooltip effect="dark" :content="item.statusIcon.content">
-                      <Icon :icon="item.statusIcon.icon" :style="`color: ${item.statusIcon.color}`" width="20" height="20"/>
-                    </el-tooltip>
-                    <div class="del-status" v-if="item.isDel">
-                      <el-tooltip effect="dark" :content="item.isDelContent">
-                        <Icon class="icon" icon="mdi:email-remove" width="20" height="20"/>
-                      </el-tooltip>
-                    </div>
-                  </div>
-                  <div v-else></div>
-                  <span class="name">
-                    <span>
-                      <div class="unread" v-if="isMobile && (item.unread === EmailUnreadEnum.UNREAD && showUnread) "/>
-                      <slot name="name" :email="item"> {{ item.name }}</slot>
-                    </span>
-                    <span>
-                      <Icon v-if="item.isStar" icon="fluent-color:star-16" width="18" height="18"/>
-                    </span>
-                  </span>
-                  <span class="phone-time">{{ item.formatCreateTime }}</span>
-                </div>
-                <div>
+              <div class="title">
+                <div class="email-main">
                   <div class="email-text">
                     <span class="email-subject" :style="(item.unread === EmailUnreadEnum.UNREAD && showUnread)  ? 'font-weight: bold' : ''">
                       <div class="unread" v-if="!isMobile && (item.unread === EmailUnreadEnum.UNREAD && showUnread) "/>
@@ -107,6 +83,29 @@
                       <span>{{ item.type === 0 ? item.toEmail : item.sendEmail }}</span>
                     </div>
                   </div>
+                </div>
+                <div class="email-sender" :style=" (showStatus ? 'gap: 10px;' : '') + ((item.unread === EmailUnreadEnum.UNREAD && showUnread)  ? 'font-weight: bold' : '')">
+                  <div class="email-status" v-if="showStatus">
+                    <el-tooltip effect="dark" :content="item.statusIcon.content">
+                      <Icon :icon="item.statusIcon.icon" :style="`color: ${item.statusIcon.color}`" width="20" height="20"/>
+                    </el-tooltip>
+                    <div class="del-status" v-if="item.isDel">
+                      <el-tooltip effect="dark" :content="item.isDelContent">
+                        <Icon class="icon" icon="mdi:email-remove" width="20" height="20"/>
+                      </el-tooltip>
+                    </div>
+                  </div>
+                  <div v-else></div>
+                  <span class="name">
+                    <span>
+                      <div class="unread" v-if="isMobile && (item.unread === EmailUnreadEnum.UNREAD && showUnread) "/>
+                      <slot name="name" :email="item"> {{ item.name }}</slot>
+                    </span>
+                    <span>
+                      <Icon v-if="item.isStar" icon="fluent-color:star-16" width="18" height="18"/>
+                    </span>
+                  </span>
+                  <span class="phone-time">{{ item.formatCreateTime }}</span>
                 </div>
               </div>
               <div class="email-right" :style="showUserInfo ? 'align-self: start;':''">
@@ -424,9 +423,9 @@ const list = computed(() => {
 
 const itemHeight = computed(() => {
     if (props.type === 'all-email') {
-      return isMobile.value ? 132 : 65;
+      return isMobile.value ? 132 : 84;
     } else  {
-      return isMobile.value ? 83 : 48;
+      return isMobile.value ? 83 : 64;
     }
 })
 
@@ -1056,7 +1055,7 @@ function loadData() {
   align-items: center;
   position: relative;
   transition: background 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-  height: 48px;
+  height: 64px;
   @media (max-width: 1366px) {
     height: 83px;
   }
@@ -1071,7 +1070,7 @@ function loadData() {
   }
 
   &.all-email {
-    height: 65px;
+    height: 84px;
     @media (max-width: 1366px) {
       height: 132px;
     }
@@ -1141,43 +1140,48 @@ function loadData() {
 
   .title {
     flex: 1;
-    display: grid;
-    grid-template-columns: 240px 1fr;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+    padding-right: 8px;
     @media (max-width: 1366px) {
       padding-right: 15px;
     }
-    @media (max-width: 1366px) {
-      grid-template-columns: 1fr;
-      gap: 4px;
+
+    .email-main {
+      min-width: 0;
     }
 
     .email-sender {
-      color: var(--el-text-color-primary);
+      color: var(--secondary-text-color, var(--el-text-color-secondary));
       display: grid;
       grid-template-columns: auto 1fr auto;
+      align-items: center;
+      min-width: 0;
+      font-size: 12px;
+      font-weight: normal !important;
 
       .email-status {
         display: flex;
-        flex-direction: column;
-        align-content: center;
-        @media (max-width: 1366px) {
-          flex-direction: row;
-          gap: 5px;
-        }
+        flex-direction: row;
+        align-items: center;
+        gap: 4px;
+        margin-right: 4px;
       }
 
       .name {
         display: grid;
         gap: 5px;
         grid-template-columns: auto 1fr;
+        min-width: 0;
 
         > span:last-child {
           display: flex;
           align-items: center;
         }
 
-        @media (min-width: 1366px) {
-          grid-template-columns: 1fr;
+        @media (min-width: 1367px) {
           > span:last-child {
             display: none;
           }
@@ -1187,6 +1191,7 @@ function loadData() {
           overflow: hidden;
           white-space: nowrap;
           text-overflow: ellipsis;
+          color: var(--el-text-color-regular);
         }
 
         .name-skeleton {
@@ -1233,10 +1238,9 @@ function loadData() {
 
     .email-text {
       display: grid;
-      grid-template-columns: auto 1fr;
-      @media (max-width: 1366px) {
-        grid-template-columns: 1fr;
-      }
+      grid-template-columns: 1fr;
+      gap: 2px;
+      min-width: 0;
 
       .email-subject {
         display: flex;
@@ -1245,9 +1249,6 @@ function loadData() {
         overflow: hidden;
         white-space: nowrap;
         min-width: 0;
-        @media (min-width: 1367px) {
-          padding-left: 5px;
-        }
       }
 
       .code-tag {
@@ -1274,11 +1275,11 @@ function loadData() {
         overflow: hidden;
         white-space: nowrap;
         text-overflow: ellipsis;
-        padding-left: 10px;
+        padding-left: 0;
         color: var(--email-scroll-content-color);
-        @media (max-width: 1366px) {
-          padding-left: 0;
-          margin-top: 0;
+        font-size: 12px;
+        @media (min-width: 1367px) {
+          display: none;
         }
       }
     }

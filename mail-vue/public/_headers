@@ -1,6 +1,15 @@
+# Cloudflare Workers Assets 缓存头
 /assets/*
-  Cache-Control: public, max-age=31556952, immutable
+  Cache-Control: public, max-age=31536000, immutable
+
 /tinymce/*
-  Cache-Control: public, max-age=604800, immutable
-/image/*
-  Cache-Control: public, max-age=604800, immutable
+  Cache-Control: public, max-age=604800
+
+/*.js
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.css
+  Cache-Control: public, max-age=31536000, immutable
+
+/mail-pwa.png
+  Cache-Control: public, max-age=604800

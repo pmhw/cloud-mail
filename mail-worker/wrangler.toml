@@ -36,7 +36,8 @@ binding = "ai"
 binding = "assets"
 directory = "./dist"
 not_found_handling = "single-page-application"
-run_worker_first = true
+# 仅 API/附件走 Worker；JS/CSS 等静态资源由边缘直接分发，避免全局 run_worker_first 拖慢首屏
+run_worker_first = ["/api/*", "/static/*", "/attachments/*"]
 
 [triggers]
 crons = ["*/2 * * * *", "0 16 * * *"]	# 每2分钟处理定时发送；每天 UTC 16:00 执行每日任务

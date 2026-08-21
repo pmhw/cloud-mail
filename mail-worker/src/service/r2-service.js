@@ -56,6 +56,42 @@ const r2Service = {
 		}
 	},
 
+	async toResponse(c, key) {
+		const storageType = await this.storageType(c);
+
+		if (storageType === 'KV') {
+			const resp = await kvObjService.getObj(c, key);
+			if (!resp) {
+				return new Response('Not Found', { status: 404 });
+			}
+			return resp;
+		}
+
+		if (storageType === 'R2') {
+			const obj = await c.env.r2.get(key);
+			if (!obj) {
+				return new Response('Not Found', { status: 404 });
+			}
+			const headers = new Headers();
+			obj.writeHttpMetadata(headers);
+			headers.set('etag', obj.httpEtag);
+			if (!headers.has('Cache-Control')) {
+				headers.set('Cache-Control', 'public, max-age=259200');
+			}
+			return new Response(obj.body, { headers });
+		}
+
+		if (storageType === 'S3') {
+			const resp = await s3Service.getObj(c, key);
+			if (!resp) {
+				return new Response('Not Found', { status: 404 });
+			}
+			return resp;
+		}
+
+		return new Response('Not Found', { status: 404 });
+	},
+
 	async delete(c, key) {
 
 		const storageType = await this.storageType(c);

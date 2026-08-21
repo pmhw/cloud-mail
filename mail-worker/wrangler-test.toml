@@ -27,7 +27,7 @@ binding = "ai"
 binding = "assets"		#静态资源绑定名默认不可修改
 directory = "./dist"	#前端vue项目打包的静态资源存放位置,默认dist
 not_found_handling = "single-page-application"
-run_worker_first = true
+run_worker_first = ["/api/*", "/static/*", "/attachments/*"]
 
 [triggers]
 crons = ["*/2 * * * *", "0 16 * * *"]	#每2分钟定时发送；每天晚上12点执行每日任务,刷新分析缓存

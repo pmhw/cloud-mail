@@ -59,10 +59,13 @@ export async function email(message, env, ctx) {
 			return;
 		}
 
-		const account = await accountService.selectByEmailIncludeDel({ env: env }, message.to);
+		const toAddress = normalizeRecipient(message.to);
+
+		const account = await accountService.selectByEmailIncludeDel({ env: env }, toAddress);
 
 		if (!account && noRecipient === settingConst.noRecipient.CLOSE) {
-			message.setReject('Recipient not found');
+			console.warn(`Recipient not found: raw=${message.to}, normalized=${toAddress}`);
+			message.setReject(`Recipient not found: ${toAddress || message.to || ''}`);
 			return;
 		}
 
@@ -76,7 +79,7 @@ export async function email(message, env, ctx) {
 
 			let { banEmail, availDomain } = await roleService.selectByUserId({ env: env }, account.userId);
 
-			if (!roleService.hasAvailDomainPerm(availDomain, message.to)) {
+			if (!roleService.hasAvailDomainPerm(availDomain, toAddress)) {
 				message.setReject('The recipient is not authorized to use this domain.');
 				return;
 			}
@@ -90,15 +93,15 @@ export async function email(message, env, ctx) {
 
 
 		if (!email.to) {
-			email.to = [{ address: message.to, name: emailUtils.getName(message.to)}]
+			email.to = [{ address: toAddress, name: emailUtils.getName(toAddress)}]
 		}
 
-		const toName = email.to.find(item => item.address === message.to)?.name || '';
+		const toName = email.to.find(item => normalizeRecipient(item.address) === toAddress)?.name || '';
 		const code = await aiService.extractCode({ env }, email, { aiCode, aiCodeFilter });
 		const isSpam = checkSpam(spamFrom, spamSubject, email);
 
 		const params = {
-			toEmail: message.to,
+			toEmail: toAddress,
 			toName: toName,
 			sendEmail: email.from.address,
 			name: email.from.name || emailUtils.getName(email.from.address),
@@ -153,9 +156,9 @@ export async function email(message, env, ctx) {
 
 		if (ruleType === settingConst.ruleType.RULE) {
 
-			const emails = ruleEmail.split(',');
+			const emails = ruleEmail.split(',').map(item => normalizeRecipient(item));
 
-			if (!emails.includes(message.to)) {
+			if (!emails.includes(toAddress)) {
 				return;
 			}
 
@@ -238,4 +241,13 @@ function checkSpam(spamFromStr, spamSubjectStr, email) {
 	}
 
 	return false
+}
+
+function normalizeRecipient(to) {
+	if (!to) return '';
+	const raw = String(to).trim();
+	const matched = raw.match(/<([^>]+)>/);
+	const email = (matched ? matched[1] : raw).trim().toLowerCase();
+	// 去掉可能的 mailto: 前缀与多余空格
+	return email.replace(/^mailto:/i, '').replace(/\s+/g, '');
 }

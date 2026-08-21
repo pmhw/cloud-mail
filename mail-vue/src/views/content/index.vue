@@ -7,8 +7,25 @@
         <Icon class="icon" @click="changeStar" v-if="email.isStar" icon="fluent-color:star-16" width="20" height="20"/>
         <Icon class="icon" @click="changeStar" v-else icon="solar:star-line-duotone" width="18" height="18"/>
       </span>
-      <Icon class="icon" v-if="emailStore.contentData.showReply" v-perm="'email:send'"  @click="openReply" icon="la:reply" width="21" height="21" />
-      <Icon class="icon" v-if="emailStore.contentData.showReply" v-perm="'email:send'"  @click="openForward" icon="iconoir:arrow-up-right" width="20" height="20" />
+      <el-button
+          v-if="canReply"
+          v-perm="'email:send'"
+          size="small"
+          type="primary"
+          @click="openReply"
+      >
+        <Icon icon="la:reply" width="16" height="16" style="margin-right: 4px"/>
+        {{ $t('reply') }}
+      </el-button>
+      <el-button
+          v-if="canForward"
+          v-perm="'email:send'"
+          size="small"
+          @click="openForward"
+      >
+        <Icon icon="iconoir:arrow-up-right" width="15" height="15" style="margin-right: 4px"/>
+        {{ $t('forward') }}
+      </el-button>
       <Icon
           class="icon"
           v-if="email.type === 1"
@@ -64,6 +81,16 @@
             <ShadowHtml class="shadow-html" :html="formatImage(email.content)" v-if="email.content" />
             <pre v-else class="email-text" >{{email.text}}</pre>
           </el-scrollbar>
+          <div class="mail-actions" v-if="canReply || canForward" v-perm="'email:send'">
+            <el-button v-if="canReply" type="primary" @click="openReply">
+              <Icon icon="la:reply" width="18" height="18" style="margin-right: 6px"/>
+              {{ $t('reply') }}
+            </el-button>
+            <el-button v-if="canForward" @click="openForward">
+              <Icon icon="iconoir:arrow-up-right" width="17" height="17" style="margin-right: 6px"/>
+              {{ $t('forward') }}
+            </el-button>
+          </div>
           <div class="att" v-if="email.attList?.length > 0">
             <div class="att-title">
               <span>{{$t('attachments')}}</span>
@@ -133,6 +160,12 @@ const accountStore = useAccountStore();
 const emailStore = useEmailStore();
 const router = useRouter()
 const email = computed(() => emailStore.contentData.email)
+const canReply = computed(() => {
+  return !!email.value && email.value.type !== 1 && emailStore.contentData.showReply
+})
+const canForward = computed(() => {
+  return !!email.value && emailStore.contentData.showReply
+})
 const showPreview = ref(false)
 const srcList = reactive([])
 
@@ -170,15 +203,18 @@ function handleKeyDown(event) {
 }
 
 function openReply() {
-  uiStore.writerRef.openReply(email.value)
+  const writer = uiStore.writerRef?.value || uiStore.writerRef
+  writer?.openReply?.(email.value)
 }
 
 function openForward() {
-  uiStore.writerRef.openForward(email.value)
+  const writer = uiStore.writerRef?.value || uiStore.writerRef
+  writer?.openForward?.(email.value)
 }
 
 function openEditAgain() {
-  uiStore.writerRef.openEditAgain(email.value)
+  const writer = uiStore.writerRef?.value || uiStore.writerRef
+  writer?.openEditAgain?.(email.value)
 }
 
 function toMessage(message) {
@@ -329,6 +365,12 @@ const handleDelete = () => {
   .icon {
     cursor: pointer;
   }
+}
+
+.mail-actions {
+  display: flex;
+  gap: 10px;
+  padding: 16px 0 8px;
 }
 
 

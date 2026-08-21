@@ -516,15 +516,18 @@ window.addEventListener('wheel', (event) => {
 })
 
 function openReply(email) {
-  uiStore.writerRef.openReply(email)
+  const writer = uiStore.writerRef?.value || uiStore.writerRef
+  writer?.openReply?.(email)
 }
 
 function openForward(email) {
-  uiStore.writerRef.openForward(email)
+  const writer = uiStore.writerRef?.value || uiStore.writerRef
+  writer?.openForward?.(email)
 }
 
 function openEditAgain(email) {
-  uiStore.writerRef.openEditAgain(email)
+  const writer = uiStore.writerRef?.value || uiStore.writerRef
+  writer?.openEditAgain?.(email)
 }
 
 function visibleChange(e) {

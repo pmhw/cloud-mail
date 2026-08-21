@@ -2,6 +2,16 @@ import { S3Client, PutObjectCommand, DeleteObjectsCommand, GetObjectCommand } fr
 import settingService from './setting-service';
 import domainUtils from '../utils/domain-uitls';
 import { settingConst } from '../const/entity-const';
+import BizError from '../error/biz-error';
+
+function wrapS3Error(err, action) {
+	const msg = err?.message || String(err);
+	const code = err?.name || err?.Code || err?.code || '';
+	const detail = [code, msg].filter(Boolean).join(': ');
+	console.error(`S3 ${action} failed:`, detail);
+	throw new BizError(`对象存储${action}失败（${detail}）。请检查 S3 Endpoint/Region/密钥，京东云等兼容存储请开启 ForcePathStyle`);
+}
+
 const s3Service = {
 
 	async putObj(c, key, content, metadata) {
@@ -26,7 +36,11 @@ const s3Service = {
 			obj.ContentType = metadata.contentType
 		}
 
-		await client.send(new PutObjectCommand(obj))
+		try {
+			await client.send(new PutObjectCommand(obj))
+		} catch (err) {
+			wrapS3Error(err, '上传');
+		}
 	},
 
 	async deleteObj(c, keys) {
@@ -65,31 +79,39 @@ const s3Service = {
 		);
 
 
-		await client.send(
-			new DeleteObjectsCommand({
-				Bucket: bucket,
-				Delete: {
-					Objects: keys.map(key => ({ Key: key }))
-				}
-			})
-		);
+		try {
+			await client.send(
+				new DeleteObjectsCommand({
+					Bucket: bucket,
+					Delete: {
+						Objects: keys.map(key => ({ Key: key }))
+					}
+				})
+			);
+		} catch (err) {
+			wrapS3Error(err, '删除');
+		}
 	},
 
 	async getObj(c, key) {
 		const client = await this.client(c);
 		const { bucket } = await settingService.query(c);
-		const result = await client.send(new GetObjectCommand({
-			Bucket: bucket,
-			Key: key
-		}));
+		try {
+			const result = await client.send(new GetObjectCommand({
+				Bucket: bucket,
+				Key: key
+			}));
 
-		return new Response(result.Body, {
-			headers: {
-				'Content-Type': result.ContentType || 'application/octet-stream',
-				'Content-Disposition': result.ContentDisposition || null,
-				'Cache-Control': result.CacheControl || null
-			}
-		});
+			return new Response(result.Body, {
+				headers: {
+					'Content-Type': result.ContentType || 'application/octet-stream',
+					'Content-Disposition': result.ContentDisposition || null,
+					'Cache-Control': result.CacheControl || null
+				}
+			});
+		} catch (err) {
+			wrapS3Error(err, '下载');
+		}
 	},
 
 
@@ -99,6 +121,9 @@ const s3Service = {
 			region: region || 'auto',
 			endpoint: domainUtils.toOssDomain(endpoint),
 			forcePathStyle: forcePathStyle === settingConst.forcePathStyle.OPEN,
+			// 新版 SDK 默认带 CRC32，京东云/MinIO 等兼容存储常因此返回 Access Denied
+			requestChecksumCalculation: 'WHEN_REQUIRED',
+			responseChecksumValidation: 'WHEN_REQUIRED',
 			credentials: {
 				accessKeyId: s3AccessKey,
 				secretAccessKey: s3SecretKey,
